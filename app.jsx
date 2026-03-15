@@ -323,8 +323,8 @@ function App() {
         {tab==="packaging"&&<Packaging/>}
         {tab==="builder"&&<Builder recipes={recipes} save={save} goRecipes={()=>setTab("recipes")} editingProduct={editingProduct} clearEdit={()=>setEditingProduct(null)}/>}
         {tab==="recipes"&&<Recipes recipes={recipes} save={save} goBuilder={()=>setTab("builder")} onEdit={(r)=>{setEditingProduct(r);setTab("builder");}}/>}
-        {tab==="production"&&<Production recipes={recipes}/>}
-        {tab==="costs"&&<CostCalc recipes={recipes}/>}
+        {tab==="production"&&<Production recipes={recipes} save={save}/>}
+        {tab==="costs"&&<CostCalc recipes={recipes} save={save}/>}
       </div>
     </div>
   );
@@ -1099,13 +1099,32 @@ Upload: product name, category, frame formula,
     })}
   </div>;
 }
-function Production({recipes}) {
+function Production({recipes,save}) {
   const [selId,setSelId]=useState("");
   const [targetQty,setTargetQty]=useState("");
   const [targetUnit,setTargetUnit]=useState("ml");
-  const [showUnits,setShowUnits]=useState("both"); // both, metric, drops
+  const [showUnits,setShowUnits]=useState("both");
   const [containerSize,setContainerSize]=useState("");
   const [containerUnit,setContainerUnit]=useState("ml");
+  const [configName,setConfigName]=useState("");
+  const recipe = recipes.find(r=>r.id===+selId);
+  const savedConfigs=recipe?.productionConfigs||[];
+
+  const saveConfig=()=>{
+    if(!configName.trim()||!recipe)return;
+    const cfg={id:Date.now(),name:configName.trim(),targetQty,targetUnit,containerSize,containerUnit,savedAt:new Date().toISOString()};
+    const updated={...recipe,productionConfigs:[...savedConfigs,cfg]};
+    save(recipes.map(r=>r.id===recipe.id?updated:r));
+    setConfigName("");
+  };
+  const loadConfig=(cfg)=>{
+    setTargetQty(cfg.targetQty);setTargetUnit(cfg.targetUnit);
+    setContainerSize(cfg.containerSize);setContainerUnit(cfg.containerUnit);
+  };
+  const delConfig=(cfgId)=>{
+    const updated={...recipe,productionConfigs:savedConfigs.filter(c=>c.id!==cfgId)};
+    save(recipes.map(r=>r.id===recipe.id?updated:r));
+  };
   const recipe = recipes.find(r=>r.id===+selId);
   const origSize = recipe?.batchSize||1;
   const origUnit = recipe?.batchUnit||"ml";
@@ -1184,6 +1203,24 @@ function Production({recipes}) {
           </div>
         </>}
       </div>
+      {/* Saved Configurations */}
+      {recipe&&<div style={{...card,marginTop:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <span style={{fontWeight:600,fontSize:12,color:textMuted}}>Saved Configurations</span>
+          {target>0&&<div style={{display:"flex",gap:4,alignItems:"center"}}>
+            <input value={configName} onChange={e=>setConfigName(e.target.value)} placeholder="e.g. 200x15ml bottles" style={{...inp,width:180,fontSize:11}}/>
+            <button onClick={saveConfig} disabled={!configName.trim()} style={{...btn,background:gold,color:bg,fontWeight:600,fontSize:10,padding:"4px 10px",opacity:configName.trim()?1:0.4}}>Save</button>
+          </div>}
+        </div>
+        {savedConfigs.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+          {savedConfigs.map(cfg=><div key={cfg.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",background:bgInput,borderRadius:6,border:`1px solid ${border}`,fontSize:11}}>
+            <button onClick={()=>loadConfig(cfg)} style={{background:"none",border:"none",color:gold,cursor:"pointer",fontWeight:600,fontSize:11}}>{cfg.name}</button>
+            <span style={{color:textDim,fontSize:10}}>{cfg.targetQty}{cfg.targetUnit}{cfg.containerSize?` · ${cfg.containerSize}${cfg.containerUnit}`:""}</span>
+            <button onClick={()=>delConfig(cfg.id)} style={{background:"none",border:"none",color:danger,cursor:"pointer",fontSize:12,padding:"0 2px"}}>×</button>
+          </div>)}
+        </div>}
+        {savedConfigs.length===0&&<div style={{fontSize:11,color:textDim}}>Set a production quantity above, then save it for quick access later.</div>}
+      </div>}
       {/* Quick Sizes */}
       {recipe&&!target&&<div style={{...card}}>
         <label style={lbl}>Quick Select Production Size</label>
@@ -1323,11 +1360,12 @@ function Production({recipes}) {
     </>}
   </div>;
 }
-function CostCalc({recipes}) {
+function CostCalc({recipes,save}) {
   const [selId,setSelId]=useState("");
   const [retailPrice,setRetailPrice]=useState("");
   const [containerSz,setContainerSz]=useState("30");
   const [containerUnit,setContainerUnit]=useState("ml");
+  const [configName,setConfigName]=useState("");
   const [scentOv,setScentOv]=useState({});
   const [baseOv,setBaseOv]=useState({});
   useEffect(()=>{(async()=>{
@@ -1379,6 +1417,30 @@ function CostCalc({recipes}) {
         <input type="number" step="0.01" value={retailPrice} onChange={e=>setRetailPrice(e.target.value)} placeholder="e.g. 14.95" style={{...inp,width:90,textAlign:"center"}}/>
       </div>
     </div>
+    {/* Saved Pricing Configs */}
+    {recipe&&<div style={{...card,marginTop:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <span style={{fontWeight:600,fontSize:12,color:textMuted}}>Saved Pricing Setups</span>
+        {rp>0&&cSz>0&&<div style={{display:"flex",gap:4,alignItems:"center"}}>
+          <input value={configName} onChange={e=>setConfigName(e.target.value)} placeholder="e.g. 15ml @ €14.95" style={{...inp,width:160,fontSize:11}}/>
+          <button onClick={()=>{
+            if(!configName.trim()||!recipe)return;
+            const cfg={id:Date.now(),name:configName.trim(),containerSz,containerUnit,retailPrice,savedAt:new Date().toISOString()};
+            const updated={...recipe,costConfigs:[...(recipe.costConfigs||[]),cfg]};
+            save(recipes.map(r=>r.id===recipe.id?updated:r));
+            setConfigName("");
+          }} disabled={!configName.trim()} style={{...btn,background:gold,color:bg,fontWeight:600,fontSize:10,padding:"4px 10px",opacity:configName.trim()?1:0.4}}>Save</button>
+        </div>}
+      </div>
+      {(recipe.costConfigs||[]).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+        {(recipe.costConfigs||[]).map(cfg=><div key={cfg.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",background:bgInput,borderRadius:6,border:`1px solid ${border}`,fontSize:11}}>
+          <button onClick={()=>{setContainerSz(cfg.containerSz);setContainerUnit(cfg.containerUnit);setRetailPrice(cfg.retailPrice);}} style={{background:"none",border:"none",color:gold,cursor:"pointer",fontWeight:600,fontSize:11}}>{cfg.name}</button>
+          <span style={{color:textDim,fontSize:10}}>{cfg.containerSz}{cfg.containerUnit} · €{cfg.retailPrice}</span>
+          <button onClick={()=>{const updated={...recipe,costConfigs:(recipe.costConfigs||[]).filter(c=>c.id!==cfg.id)};save(recipes.map(r=>r.id===recipe.id?updated:r));}} style={{background:"none",border:"none",color:danger,cursor:"pointer",fontSize:12,padding:"0 2px"}}>×</button>
+        </div>)}
+      </div>}
+      {(recipe.costConfigs||[]).length===0&&<div style={{fontSize:11,color:textDim}}>Set container size and retail price above, then save for quick access.</div>}
+    </div>}
     {recipe&&<>
       {/* -- TOTAL PRICE SUMMARY (shown first) -- */}
       <div style={{...card,marginTop:12,background:bgInput,border:`1px solid ${gold}30`}}>
