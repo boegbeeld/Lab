@@ -4,6 +4,8 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const SHEETS_CONFIG = {
   scents: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVsy-YJvA2ypDOGGv1Zh2KbswjMf0gxJHHvCb2_xaMKltGfad2LtjHf208-28mcffldVw6Cay-RgG/pub?gid=0&single=true&output=csv",
   bases: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVsy-YJvA2ypDOGGv1Zh2KbswjMf0gxJHHvCb2_xaMKltGfad2LtjHf208-28mcffldVw6Cay-RgG/pub?gid=874764417&single=true&output=csv",
+  packaging: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVsy-YJvA2ypDOGGv1Zh2KbswjMf0gxJHHvCb2_xaMKltGfad2LtjHf208-28mcffldVw6Cay-RgG/pub?gid=1964339911&single=true&output=csv",
+  editUrl: "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit",
 };
 function parseCSV(text) {
   const lines = text.split('\n').filter(l => l.trim());
@@ -247,6 +249,15 @@ const BASES = [
   {name:"D-Panthenol (Provitamin B5)",inci:"Panthenol",role:"active",products:["body_lotion","hand_cream","shampoo","body_wash"],notes:"Moisturizing, healing, hair strengthening. 1-5%.",youwish:true,maxPct:5,defaultPct:2},
   {name:"Allantoin",inci:"Allantoin",role:"active",products:["aftershave","body_lotion","hand_cream"],notes:"Soothing, anti-irritant. Great in aftershave. 0.1-0.5%.",youwish:true,maxPct:0.5,defaultPct:0.2},
 ];
+// Packaging items loaded from Google Sheet (tab: packaging)
+let PACKAGING_ITEMS = [];
+function rowToPackaging(r) {
+  return {
+    name: r.name||'', description: r.description||'', category: r.category||'container',
+    price_eur: parseFloat(r.price_eur)||0, per_unit: r.per_unit||'piece',
+    for_product: r.for_product||'all', url: r.url||'', notes: r.notes||''
+  };
+}
 const gold = "#ebb54a";
 const bg = "#192d44";
 const bgCard = "#1e3550";
@@ -291,11 +302,11 @@ function App() {
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
             <div style={{fontFamily:"'Odibee Sans',cursive",fontSize:26,color:"#ffffff",letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>BOEGBEELD</div>
             <div style={{height:20,width:1,background:border}}/>
-            <div style={{fontFamily:"'Odibee Sans',cursive",fontSize:18,color:gold,letterSpacing:2,textTransform:"uppercase"}}>Formulation Lab</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",fontSize:18,color:gold,letterSpacing:2,textTransform:"uppercase"}}>Creation Lab</div>
           </div>
           <div style={{display:"flex",gap:0,overflowX:"auto"}}>
             {tabs.map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:"none",border:"none",borderBottom:tab===t.id?`2px solid ${gold}`:"2px solid transparent",color:tab===t.id?gold:textMuted,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Open Sans',sans-serif",display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",transition:"all 0.2s"}}>
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:"none",border:"none",borderBottom:tab===t.id?`2px solid ${gold}`:"2px solid transparent",color:tab===t.id?gold:"#ffffff",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'Odibee Sans',cursive",letterSpacing:1,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",transition:"all 0.2s",textTransform:"uppercase"}}>
                 <span>{t.icon}</span>{t.label}{t.id==="recipes"&&recipes.length>0&&<span style={{background:gold+"30",color:gold,borderRadius:10,padding:"0 5px",fontSize:10,marginLeft:2}}>{recipes.length}</span>}
               </button>
             ))}
@@ -323,9 +334,6 @@ function Library() {
   const [exp,setExp]=useState(null);
   const [customs,setCustoms]=useState([]);
   const [overrides,setOverrides]=useState({});
-  const [showAdd,setShowAdd]=useState(false);
-  const [newName,setNewName]=useState("");
-  const [newUrl,setNewUrl]=useState("");
   const [editing,setEditing]=useState(null);
   useEffect(()=>{(async()=>{
     try{const r=await store.get("bb-custom-scents");if(r?.value)setCustoms(JSON.parse(r.value));}catch(e){}
@@ -347,7 +355,7 @@ function Library() {
   }),[q,tf,ff,mf,customs]);
   const scentUrl=(name)=>{const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-$/,"");return `https://www.youwish.nl/en/?s=${encodeURIComponent(name)}&post_type=product`;};
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:22,margin:"0 0 4px"}}>Scent Library <span style={{fontSize:12,color:textMuted,fontFamily:"'Open Sans'"}}>({allScents.length} scents)</span></h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Scent Library <span style={{fontSize:11,color:textMuted,fontFamily:"'Open Sans'",letterSpacing:0,textTransform:"none"}}>({allScents.length} scents)</span></h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>YouWish fragrance oils & essential oils. Click any row to expand IFRA details. Filter by category to see max %.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12,alignItems:"center"}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search scent, profile, family..." style={{...inp,flex:"1 1 180px",minWidth:150}}/>
@@ -358,13 +366,8 @@ function Library() {
         <option value="all">All Categories (no filter)</option>
         {IFRA_CAT_ORDER.map(k=><option key={k} value={k}>Cat {k}: {IFRA_CATS[k].label}</option>)}
       </select>
-      <button onClick={()=>setShowAdd(!showAdd)} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>+ Add Custom</button>
+      <a href={SHEETS_CONFIG.editUrl+"#gid=0"} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>+ Add in Google Sheet</a>
     </div>
-    {showAdd&&<div style={{...card,display:"flex",flexWrap:"wrap",gap:8,alignItems:"end",marginBottom:12}}>
-      <div style={{flex:"1 1 200px"}}><label style={lbl}>Scent Name</label><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g. My Custom Blend" style={inp}/></div>
-      <div style={{flex:"1 1 200px"}}><label style={lbl}>Product URL</label><input value={newUrl} onChange={e=>setNewUrl(e.target.value)} placeholder="https://www.youwish.nl/..." style={inp}/></div>
-      <button onClick={()=>{if(newName.trim()){saveCustoms([...customs,{name:newName.trim(),type:"FO",family:"Custom",note:"—",profile:"Custom scent — update IFRA from product page",masculine:3,ifra:FO_DEF,url:newUrl.trim()||null,custom:true}]);setNewName("");setNewUrl("");setShowAdd(false);}}} style={{...btn,background:gold,color:"#192d44",fontWeight:700,padding:"8px 16px"}}>Add</button>
-    </div>}
     <div style={{fontSize:11,color:textMuted,marginBottom:8}}>
       Showing <strong style={{color:textMain}}>{filtered.length}</strong>
       {cv!=="all"&&<> — Max % for <strong style={{color:gold}}>Cat {cv}</strong> ({IFRA_CATS[cv].label})</>}
@@ -372,7 +375,7 @@ function Library() {
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
         <thead><tr style={{borderBottom:`1px solid ${border}`}}>
-          {["Name","Type","Family","Note",cv!=="all"?"IFRA Max %":"IFRA","♂","Links"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+          {["Name","Type","Family","Note",cv!=="all"?"IFRA Max %":"IFRA","Masculinity","Links"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
         </tr></thead>
         <tbody>{filtered.map((s,i)=>{
           const mx=cv!=="all"?(s.ifra[cv]||0):null;
@@ -380,7 +383,7 @@ function Library() {
           const url=s.url||scentUrl(s.name);
           return (<React.Fragment key={s.name}>
             <tr onClick={()=>setExp(open?null:s.name)} style={{borderBottom:`1px solid ${border}30`,cursor:"pointer",background:open?bgCard:"transparent",transition:"background .15s"}} onMouseEnter={e=>{if(!open)e.currentTarget.style.background=`${bg}ee`}} onMouseLeave={e=>{if(!open)e.currentTarget.style.background="transparent"}}>
-              <td style={{padding:"6px 8px",fontWeight:600,maxWidth:200}}>{s.name}{s.custom&&<span style={{color:gold,fontSize:9,marginLeft:4}}>✎</span>}</td>
+              <td style={{padding:"6px 8px",fontWeight:600,maxWidth:200}}>{s.name}<span style={{fontSize:8,marginLeft:4,padding:"1px 4px",borderRadius:3,background:s.ifraSource==="verified"?`${ok}15`:`${warn}10`,color:s.ifraSource==="verified"?ok:warn}}>{s.ifraSource==="verified"?"✓":"est"}</span></td>
               <td style={{padding:"6px 8px"}}><TypeBadge t={s.type}/></td>
               <td style={{padding:"6px 8px",color:textMuted,fontSize:11}}>{s.family}</td>
               <td style={{padding:"6px 8px",color:textMuted,fontSize:11}}>{s.note}</td>
@@ -391,6 +394,7 @@ function Library() {
             </tr>
             {open&&<tr><td colSpan={7} style={{padding:"0 8px 8px",background:bgCard}}><div style={{padding:"10px 14px",borderRadius:8,background:bgInput,border:`1px solid ${border}`}}>
               <div style={{fontSize:11,color:textMain,marginBottom:8}}><strong style={{color:gold}}>Profile:</strong> {s.profile}</div>
+              {s.inci&&<div style={{fontSize:11,color:textMuted,marginBottom:8,fontStyle:"italic"}}><strong style={{color:gold}}>INCI:</strong> {s.inci}</div>}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:s.ifraSource==="verified"?`${ok}20`:`${warn}20`,color:s.ifraSource==="verified"?ok:warn,fontWeight:600}}>IFRA: {s.ifraSource==="verified"?"[x] Verified":"⚠ Estimated"}</span>
                 <span style={{fontSize:10,color:textDim}}>€{(s.pricePer100ml||0).toFixed(2)}/100ml</span>
@@ -459,20 +463,13 @@ function IngredientsLib() {
   });
   const baseUrl=(name)=>`https://www.youwish.nl/en/?s=${encodeURIComponent(name)}&post_type=product`;
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:22,margin:"0 0 4px"}}>Base Ingredients <span style={{fontSize:12,color:textMuted,fontFamily:"'Open Sans'"}}>({allBases.length})</span></h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Base Ingredients <span style={{fontSize:11,color:textMuted,fontFamily:"'Open Sans'",letterSpacing:0,textTransform:"none"}}>({allBases.length})</span></h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Base ingredients from YouWish. Click to expand details. Links go to YouWish product search.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search ingredient or INCI..." style={{...inp,flex:"1 1 200px"}}/>
       <select value={rf} onChange={e=>setRf(e.target.value)} style={{...inp,width:150}}><option value="all">All Roles</option>{roles.map(r=><option key={r} value={r}>{r}</option>)}</select>
-      <button onClick={()=>setShowAdd(!showAdd)} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>+ Add Custom</button>
+      <a href={SHEETS_CONFIG.editUrl+"#gid=874764417"} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>+ Add in Google Sheet</a>
     </div>
-    {showAdd&&<div style={{...card,display:"flex",flexWrap:"wrap",gap:8,alignItems:"end"}}>
-      <div style={{flex:"1 1 160px"}}><label style={lbl}>Name</label><input value={nName} onChange={e=>setNName(e.target.value)} style={inp}/></div>
-      <div style={{flex:"1 1 160px"}}><label style={lbl}>INCI</label><input value={nInci} onChange={e=>setNInci(e.target.value)} style={inp}/></div>
-      <div style={{flex:"0 0 120px"}}><label style={lbl}>Role</label><select value={nRole} onChange={e=>setNRole(e.target.value)} style={inp}>{roles.map(r=><option key={r} value={r}>{r}</option>)}</select></div>
-      <div style={{flex:"1 1 200px"}}><label style={lbl}>Product URL</label><input value={nUrl} onChange={e=>setNUrl(e.target.value)} placeholder="https://..." style={inp}/></div>
-      <button onClick={()=>{if(nName.trim()){saveCustoms([...customs,{name:nName.trim(),inci:nInci.trim()||"TBD",role:nRole,products:Object.keys(PRODUCTS),notes:"Custom ingredient",youwish:false,maxPct:100,defaultPct:5,url:nUrl.trim()||null,custom:true}]);setNName("");setNInci("");setNUrl("");setShowAdd(false);}}} style={{...btn,background:gold,color:"#192d44",fontWeight:700,padding:"8px 16px"}}>Add</button>
-    </div>}
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
         <thead><tr style={{borderBottom:`1px solid ${border}`}}>
@@ -597,7 +594,7 @@ function Builder({recipes,save,goRecipes}) {
     setTimeout(()=>setSaved(false),2500);
   };
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px"}}>Recipe Builder</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Recipe Builder</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Build full formulations. System enforces IFRA limits and flags formulation issues.</p>
     <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
       <div style={{flex:"1 1 180px"}}><label style={lbl}>Product Type</label>
@@ -725,7 +722,7 @@ function Recipes({recipes,save,goBuilder}) {
     <button onClick={goBuilder} style={{...btn,background:gold,color:bg,fontWeight:600,padding:"10px 24px",marginTop:10}}>Open Recipe Builder</button>
   </div>;
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px"}}>Saved Recipes</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Saved Recipes</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Stored persistently. Click "PIF Data" to generate documentation for YouWish submission.</p>
     {recipes.map(r=>{
       const isOpen=expanded===r.id;
@@ -921,7 +918,7 @@ function Production({recipes}) {
     {label:"5 kg",val:5,unit:"kg"},
   ];
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:22,margin:"0 0 4px"}}>Production Scale-Up</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Production Scale-Up</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a saved recipe and scale it to any production quantity. All amounts recalculate automatically.</p>
     {recipes.length===0&&<div style={{textAlign:"center",padding:"50px 20px"}}>
       <div style={{fontSize:44,marginBottom:12}}>🏭</div>
@@ -1116,9 +1113,14 @@ function CostCalc({recipes}) {
     return {...ing,pricePerUnit,amtPerContainer,costPerContainer};
   });
   const totalCostPerContainer=ingredientCosts.reduce((a,i)=>a+i.costPerContainer,0);
-  const margin=rp>0&&totalCostPerContainer>0?((rp-totalCostPerContainer)/rp*100):0;
+  // Packaging costs from Google Sheet
+  const packagingForProduct=PACKAGING_ITEMS.filter(p=>p.for_product==="all"||p.for_product.toLowerCase()===(recipe?.productType||"").toLowerCase()||p.for_product.toLowerCase()===(recipe?.productName||"").toLowerCase());
+  const totalPackagingCost=packagingForProduct.reduce((a,p)=>a+p.price_eur,0);
+  const totalCostPerUnit=totalCostPerContainer+totalPackagingCost;
+  const margin=rp>0&&totalCostPerUnit>0?((rp-totalCostPerUnit)/rp*100):0;
+  const sectionTitle={fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:14,marginBottom:4,letterSpacing:1,textTransform:"uppercase"};
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:22,margin:"0 0 4px"}}>Cost Calculator</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Cost Calculator</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a recipe to see total cost per unit. Adjust ingredient prices below the summary.</p>
     {/* Recipe Selection */}
     <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
@@ -1141,30 +1143,36 @@ function CostCalc({recipes}) {
     {recipe&&<>
       {/* -- TOTAL PRICE SUMMARY (shown first) -- */}
       <div style={{...card,marginTop:12,background:bgInput,border:`1px solid ${gold}30`}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}>
           <div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
-            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Ingredient Cost</div>
-            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:28}}>€{totalCostPerContainer.toFixed(2)}</div>
-            <div style={{color:textDim,fontSize:10}}>per {cSz}{containerUnit} unit</div>
+            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Ingredients</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:24}}>€{totalCostPerContainer.toFixed(2)}</div>
+          </div>
+          <div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
+            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Packaging</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:24}}>€{totalPackagingCost.toFixed(2)}</div>
+          </div>
+          <div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${gold}40`}}>
+            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Total / Unit</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:"#fff",fontSize:24}}>€{totalCostPerUnit.toFixed(2)}</div>
           </div>
           {rp>0&&<div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
-            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Retail Price</div>
-            <div style={{fontFamily:"'Odibee Sans',cursive",color:textMain,fontSize:28}}>€{rp.toFixed(2)}</div>
+            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Retail</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:textMain,fontSize:24}}>€{rp.toFixed(2)}</div>
           </div>}
-          {rp>0&&totalCostPerContainer>0&&<div style={{padding:"12px 16px",background:margin>=70?`${ok}15`:margin>=50?`${warn}15`:`${danger}15`,borderRadius:8,border:`1px solid ${margin>=70?ok:margin>=50?warn:danger}30`}}>
+          {rp>0&&totalCostPerUnit>0&&<div style={{padding:"12px 16px",background:margin>=70?`${ok}15`:margin>=50?`${warn}15`:`${danger}15`,borderRadius:8,border:`1px solid ${margin>=70?ok:margin>=50?warn:danger}30`}}>
             <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Margin</div>
-            <div style={{fontFamily:"'Odibee Sans',cursive",color:margin>=70?ok:margin>=50?warn:danger,fontSize:28}}>{margin.toFixed(1)}%</div>
-            <div style={{color:textDim,fontSize:10}}>{margin>=70?"🎯 Target hit!":margin>=50?"Getting close":"Below 70% target"}</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:margin>=70?ok:margin>=50?warn:danger,fontSize:24}}>{margin.toFixed(1)}%</div>
           </div>}
-          {rp>0&&totalCostPerContainer>0&&<div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
-            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Profit / Unit</div>
-            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:28}}>€{(rp-totalCostPerContainer).toFixed(2)}</div>
+          {rp>0&&totalCostPerUnit>0&&<div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
+            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Profit</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:24}}>€{(rp-totalCostPerUnit).toFixed(2)}</div>
           </div>}
         </div>
       </div>
       {/* -- INGREDIENT BREAKDOWN (with editable prices) -- */}
       <div style={{...card,marginTop:12}}>
-        <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:4}}>Ingredient Breakdown</div>
+        <div style={sectionTitle}>Section 1 — Ingredients</div>
         <p style={{fontSize:10,color:textMuted,margin:"0 0 8px"}}>Prices default to YouWish estimates. Adjust per ingredient — changes apply to Scents/Base tabs too.</p>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead><tr style={{borderBottom:`1px solid ${border}`}}>
@@ -1186,11 +1194,42 @@ function CostCalc({recipes}) {
             </tr>
           ))}</tbody>
           <tfoot><tr style={{borderTop:`1px solid ${gold}40`}}>
-            <td colSpan={4} style={{padding:"8px",fontWeight:700,textAlign:"right",color:textMain}}>Total ingredient cost:</td>
+            <td colSpan={4} style={{padding:"8px",fontWeight:700,textAlign:"right",color:textMain}}>Subtotal ingredients:</td>
             <td style={{padding:"8px",fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:16,fontWeight:700}}>€{totalCostPerContainer.toFixed(2)}</td>
           </tr></tfoot>
         </table>
-        <div style={{fontSize:10,color:textDim,marginTop:6}}>Note: Ingredient cost only. Add ~€1-3/unit for packaging, labels, shipping. YouWish PIF fee is one-time per product.</div>
+      </div>
+      {/* SECTION 2: PACKAGING */}
+      <div style={{...card,marginTop:12}}>
+        <div style={sectionTitle}>Section 2 — Packaging</div>
+        {packagingForProduct.length===0?
+          <p style={{fontSize:11,color:textMuted}}>No packaging items found. Add a "packaging" tab in your Google Sheet with columns: name, description, category, price_eur, per_unit, for_product, url, notes</p>
+        :<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{borderBottom:`1px solid ${border}`}}>
+            {["Item","Category","Cost/unit"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+          </tr></thead>
+          <tbody>{packagingForProduct.map((p,i)=>(
+            <tr key={i} style={{borderBottom:`1px solid ${border}30`}}>
+              <td style={{padding:"6px 8px",fontWeight:500}}>{p.name}<span style={{fontSize:10,color:textMuted,fontWeight:400,marginLeft:6}}>{p.description}</span></td>
+              <td style={{padding:"6px 8px"}}><span style={{fontSize:10,padding:"1px 6px",borderRadius:4,background:`${gold}15`,color:gold,fontWeight:600,textTransform:"uppercase"}}>{p.category}</span></td>
+              <td style={{padding:"6px 8px",color:gold,fontWeight:600}}>€{p.price_eur.toFixed(2)}</td>
+            </tr>
+          ))}</tbody>
+          <tfoot><tr style={{borderTop:`1px solid ${gold}40`}}>
+            <td colSpan={2} style={{padding:"8px",fontWeight:700,textAlign:"right",color:textMain}}>Subtotal packaging:</td>
+            <td style={{padding:"8px",fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:16,fontWeight:700}}>€{totalPackagingCost.toFixed(2)}</td>
+          </tr></tfoot>
+        </table>}
+      </div>
+      {/* SECTION 3: TOTAL */}
+      <div style={{...card,marginTop:12,background:`${gold}08`,border:`1px solid ${gold}30`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+          <div>
+            <div style={sectionTitle}>Total Cost Per Unit</div>
+            <div style={{fontSize:11,color:textMuted}}>Ingredients (€{totalCostPerContainer.toFixed(2)}) + Packaging (€{totalPackagingCost.toFixed(2)})</div>
+          </div>
+          <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:32}}>€{totalCostPerUnit.toFixed(2)}</div>
+        </div>
       </div>
     </>}
     {!recipe&&recipes.length>0&&<div style={{...card,marginTop:12,background:bgInput,border:`1px solid ${gold}20`}}>
@@ -1199,49 +1238,37 @@ function CostCalc({recipes}) {
   </div>;
 }
 function Packaging() {
-  const [items,setItems]=useState([]);
-  const [showAdd,setShowAdd]=useState(false);
-  const [nTitle,setNTitle]=useState("");
-  const [nDesc,setNDesc]=useState("");
-  const [nUrl,setNUrl]=useState("");
-  const [nProduct,setNProduct]=useState("");
-  useEffect(()=>{(async()=>{try{const r=await store.get("bb-packaging");if(r?.value)setItems(JSON.parse(r.value));}catch(e){}})();},[]);
-  const saveItems=async(it)=>{setItems(it);try{await store.set("bb-packaging",JSON.stringify(it));}catch(e){}};
-  const addItem=()=>{
-    if(!nTitle.trim())return;
-    saveItems([...items,{id:Date.now(),title:nTitle.trim(),desc:nDesc.trim(),url:nUrl.trim(),product:nProduct.trim(),addedAt:new Date().toISOString()}]);
-    setNTitle("");setNDesc("");setNUrl("");setNProduct("");setShowAdd(false);
-  };
+  const items = PACKAGING_ITEMS;
+  const categories = [...new Set(items.map(i=>i.category))].sort();
+  const [cf,setCf]=useState("all");
+  const filtered = cf==="all"?items:items.filter(i=>i.category===cf);
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:22,margin:"0 0 4px"}}>Packaging</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Store links to packaging suppliers, containers, labels, and boxes. Keep everything organized per product.</p>
-    <button onClick={()=>setShowAdd(!showAdd)} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:12,marginBottom:12}}>+ Add Packaging Item</button>
-    {showAdd&&<div style={{...card,display:"flex",flexWrap:"wrap",gap:10,alignItems:"end"}}>
-      <div style={{flex:"1 1 180px"}}><label style={lbl}>Title</label><input value={nTitle} onChange={e=>setNTitle(e.target.value)} placeholder="e.g. 30ml Amber Glass Bottle" style={inp}/></div>
-      <div style={{flex:"1 1 180px"}}><label style={lbl}>Description</label><input value={nDesc} onChange={e=>setNDesc(e.target.value)} placeholder="e.g. With black dropper cap, for beard oil" style={inp}/></div>
-      <div style={{flex:"1 1 120px"}}><label style={lbl}>For Product</label><input value={nProduct} onChange={e=>setNProduct(e.target.value)} placeholder="e.g. Beard Oil" style={inp}/></div>
-      <div style={{flex:"1 1 220px"}}><label style={lbl}>URL</label><input value={nUrl} onChange={e=>setNUrl(e.target.value)} placeholder="https://..." style={inp}/></div>
-      <button onClick={addItem} style={{...btn,background:gold,color:"#192d44",fontWeight:700,padding:"8px 20px"}}>Add</button>
-    </div>}
-    {items.length===0&&!showAdd&&<div style={{textAlign:"center",padding:"40px 20px"}}>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Packaging</h2>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Packaging items loaded from Google Sheet. Add new items there.</p>
+    <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+      <select value={cf} onChange={e=>setCf(e.target.value)} style={{...inp,width:160}}><option value="all">All Categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select>
+      <a href={SHEETS_CONFIG.editUrl} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none"}}>+ Add in Google Sheet</a>
+    </div>
+    {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}>
       <div style={{fontSize:40,marginBottom:8}}>📦</div>
-      <p style={{color:textMuted,fontSize:13}}>No packaging items saved yet. Add containers, labels, boxes, and supplier links.</p>
+      <p style={{color:textMuted,fontSize:13}}>No packaging items yet. Add a "packaging" tab in your Google Sheet with columns: name, description, category, price_eur, per_unit, for_product, url, notes</p>
     </div>}
-    {items.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:10}}>
-      {items.map(item=>(
-        <div key={item.id} style={card}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"start"}}>
-            <div>
-              <div style={{fontWeight:600,fontSize:13,color:textMain}}>{item.title}</div>
-              {item.product&&<span style={{fontSize:10,padding:"1px 6px",borderRadius:4,background:`${gold}15`,color:gold,fontWeight:600,marginTop:2,display:"inline-block"}}>{item.product}</span>}
-            </div>
-            <button onClick={()=>saveItems(items.filter(i=>i.id!==item.id))} style={{background:"none",border:"none",color:danger,cursor:"pointer",fontSize:14}}>×</button>
-          </div>
-          {item.desc&&<div style={{fontSize:11,color:textMuted,marginTop:4}}>{item.desc}</div>}
-          {item.url&&<a href={item.url} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline",marginTop:4,display:"block"}}>View / Order -></a>}
-          <div style={{fontSize:10,color:textDim,marginTop:4}}>Added {new Date(item.addedAt).toLocaleDateString("nl-NL")}</div>
-        </div>
-      ))}
+    {filtered.length>0&&<div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr style={{borderBottom:`1px solid ${border}`}}>
+          {["Name","Category","For Product","Price","Notes","Link"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+        </tr></thead>
+        <tbody>{filtered.map((item,i)=>(
+          <tr key={i} style={{borderBottom:`1px solid ${border}30`}}>
+            <td style={{padding:"6px 8px",fontWeight:600}}>{item.name}<div style={{fontSize:10,color:textMuted,fontWeight:400}}>{item.description}</div></td>
+            <td style={{padding:"6px 8px"}}><span style={{fontSize:10,padding:"1px 6px",borderRadius:4,background:`${gold}15`,color:gold,fontWeight:600,textTransform:"uppercase"}}>{item.category}</span></td>
+            <td style={{padding:"6px 8px",color:textMuted,fontSize:11}}>{item.for_product}</td>
+            <td style={{padding:"6px 8px",color:gold,fontWeight:600}}>€{item.price_eur.toFixed(2)} <span style={{color:textDim,fontWeight:400,fontSize:10}}>/{item.per_unit}</span></td>
+            <td style={{padding:"6px 8px",color:textMuted,fontSize:11}}>{item.notes}</td>
+            <td style={{padding:"6px 4px"}}>{item.url&&<a href={item.url} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:10}}>🔗</a>}</td>
+          </tr>
+        ))}</tbody>
+      </table>
     </div>}
   </div>;
 }
@@ -1278,6 +1305,18 @@ function SheetsApp() {
           });
         }
       } catch(e) { console.warn("Bases sheet:", e); }
+      // Load packaging
+      try {
+        if (SHEETS_CONFIG.packaging) {
+          const pRes = await fetch(SHEETS_CONFIG.packaging);
+          if (pRes.ok) {
+            const rows = parseCSV(await pRes.text()).filter(r => r.name);
+            PACKAGING_ITEMS.length = 0;
+            rows.forEach(r => PACKAGING_ITEMS.push(rowToPackaging(r)));
+            setStatus("All data loaded.");
+          }
+        }
+      } catch(e) { console.warn("Packaging sheet:", e); }
       setReady(true);
     };
     load();
