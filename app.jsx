@@ -1229,6 +1229,7 @@ function CostCalc({recipes}) {
   const recipe=recipes.find(r=>r.id===+selId);
   const cSz=parseFloat(containerSz)||30;
   const rp=parseFloat(retailPrice)||0;
+  const rpExBtw=rp/1.21; // retail excl. 21% BTW
   // Get all unique ingredients from selected recipe
   const allIngredients=recipe?[...(recipe.bases||[]).map(b=>({...b,isScent:false})),...(recipe.scents||[]).map(s=>({...s,isScent:true}))]:[];
   // Calculate costs per container
@@ -1243,11 +1244,11 @@ function CostCalc({recipes}) {
   const packagingForProduct=recipe?.packaging||[];
   const totalPackagingCost=packagingForProduct.reduce((a,p)=>a+(p.price_eur||0),0);
   const totalCostPerUnit=totalCostPerContainer+totalPackagingCost;
-  const margin=rp>0&&totalCostPerUnit>0?((rp-totalCostPerUnit)/rp*100):0;
+  const margin=rpExBtw>0&&totalCostPerUnit>0?((rpExBtw-totalCostPerUnit)/rpExBtw*100):0;
   const sectionTitle={fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:14,marginBottom:4,letterSpacing:1,textTransform:"uppercase"};
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Costs / Profit Calculator</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a recipe to see total cost per unit. Adjust ingredient prices below the summary.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>All costs excl. 21% BTW. Enter retail price incl. BTW — margin is calculated on your revenue excl. BTW.</p>
     {/* Recipe Selection */}
     <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
       <div style={{flex:"1 1 250px"}}><label style={lbl}>Select Product</label>
@@ -1262,8 +1263,8 @@ function CostCalc({recipes}) {
           <select value={containerUnit} onChange={e=>setContainerUnit(e.target.value)} style={{...inp,width:50}}><option value="ml">ml</option><option value="g">g</option></select>
         </div>
       </div>
-      <div style={{flex:"0 0 auto"}}><label style={lbl}>Retail Price (€)</label>
-        <input type="number" step="0.01" value={retailPrice} onChange={e=>setRetailPrice(e.target.value)} placeholder="e.g. 24.95" style={{...inp,width:90,textAlign:"center"}}/>
+      <div style={{flex:"0 0 auto"}}><label style={lbl}>Retail Price incl. BTW (€)</label>
+        <input type="number" step="0.01" value={retailPrice} onChange={e=>setRetailPrice(e.target.value)} placeholder="e.g. 14.95" style={{...inp,width:90,textAlign:"center"}}/>
       </div>
     </div>
     {recipe&&<>
@@ -1283,8 +1284,9 @@ function CostCalc({recipes}) {
             <div style={{fontFamily:"'Odibee Sans',cursive",color:"#fff",fontSize:24}}>€{totalCostPerUnit.toFixed(2)}</div>
           </div>
           {rp>0&&<div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
-            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Retail</div>
+            <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Retail incl. BTW</div>
             <div style={{fontFamily:"'Odibee Sans',cursive",color:textMain,fontSize:24}}>€{rp.toFixed(2)}</div>
+            <div style={{color:textDim,fontSize:10}}>excl. BTW: €{rpExBtw.toFixed(2)}</div>
           </div>}
           {rp>0&&totalCostPerUnit>0&&<div style={{padding:"12px 16px",background:margin>=70?`${ok}15`:margin>=50?`${warn}15`:`${danger}15`,borderRadius:8,border:`1px solid ${margin>=70?ok:margin>=50?warn:danger}30`}}>
             <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Margin</div>
@@ -1292,7 +1294,8 @@ function CostCalc({recipes}) {
           </div>}
           {rp>0&&totalCostPerUnit>0&&<div style={{padding:"12px 16px",background:bgCard,borderRadius:8,border:`1px solid ${border}`}}>
             <div style={{color:textMuted,fontSize:10,textTransform:"uppercase"}}>Profit</div>
-            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:24}}>€{(rp-totalCostPerUnit).toFixed(2)}</div>
+            <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:24}}>€{(rpExBtw-totalCostPerUnit).toFixed(2)}</div>
+            <div style={{color:textDim,fontSize:10}}>per unit excl. BTW</div>
           </div>}
         </div>
       </div>
@@ -1346,7 +1349,7 @@ function CostCalc({recipes}) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
           <div>
             <div style={sectionTitle}>Total Cost Per Unit</div>
-            <div style={{fontSize:11,color:textMuted}}>Ingredients (€{totalCostPerContainer.toFixed(2)}) + Packaging (€{totalPackagingCost.toFixed(2)})</div>
+            <div style={{fontSize:11,color:textMuted}}>Ingredients (€{totalCostPerContainer.toFixed(2)}) + Packaging (€{totalPackagingCost.toFixed(2)}) — all excl. BTW</div>
           </div>
           <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:32}}>€{totalCostPerUnit.toFixed(2)}</div>
         </div>
@@ -1368,7 +1371,7 @@ function CostCalc({recipes}) {
           rows.push(["","","","Subtotal:","€"+totalPackagingCost.toFixed(2)].join(","));
           rows.push("");
           rows.push(["TOTAL COST PER UNIT","","","","€"+totalCostPerUnit.toFixed(2)].join(","));
-          if(rp>0){rows.push(["Retail Price","","","","€"+rp.toFixed(2)].join(","));rows.push(["Margin","","","",margin.toFixed(1)+"%"].join(","));rows.push(["Profit per Unit","","","","€"+(rp-totalCostPerUnit).toFixed(2)].join(","));}
+          if(rp>0){rows.push(["Retail Price incl. BTW","","","","€"+rp.toFixed(2)].join(","));rows.push(["Retail Price excl. BTW","","","","€"+rpExBtw.toFixed(2)].join(","));rows.push(["Margin (on excl. BTW)","","","",margin.toFixed(1)+"%"].join(","));rows.push(["Profit per Unit excl. BTW","","","","€"+(rpExBtw-totalCostPerUnit).toFixed(2)].join(","));}
           const blob=new Blob([rows.join("\n")],{type:"text/csv"});
           const url=URL.createObjectURL(blob);const a=document.createElement("a");
           a.href=url;a.download=`boegbeeld-costs-${recipe.name.replace(/\s+/g,"-")}-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
@@ -1385,7 +1388,7 @@ function CostCalc({recipes}) {
       </div>
     </>}
     {!recipe&&recipes.length>0&&<div style={{...card,marginTop:12,background:bgInput,border:`1px solid ${gold}20`}}>
-      <div style={{fontSize:12,color:textMuted}}>💡 Select a recipe above to see cost breakdown. Prices loaded from Google Sheet (FO: €29.50/100ml, EO: €25/100ml, Carrier oils: €8/100ml). Edit directly in the table or in the Scents/Base tabs.</div>
+      <div style={{fontSize:12,color:textMuted}}>💡 Select a recipe above to see cost breakdown. All prices excl. 21% BTW. Edit prices in Google Sheet (Scents, Base, Packaging tabs).</div>
     </div>}
   </div>;
 }
