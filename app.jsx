@@ -45,13 +45,16 @@ function rowToScent(r) {
   };
 }
 function rowToBase(r) {
+  const hasPrice = parseFloat(r.price_eur) > 0;
+  const hasUrl = r.url && r.url.includes('http');
+  const src = r.verification || (hasPrice && hasUrl ? 'verified' : hasPrice ? 'price_only' : hasUrl ? 'url_only' : 'needs_check');
   return {
     name: r.name, inci: r.inci || '', role: r.role || 'carrier',
     maxPct: parseFloat(r.max_pct) || 100, defaultPct: parseFloat(r.default_pct) || 5,
     notes: r.notes || '', youwish: true, products: Object.keys(PRODUCTS),
     pricePer100: r.price_per_ml ? (parseFloat(r.price_eur)||0) / (parseFloat(r.price_per_ml)||100) * 100 : parseFloat(r.price_eur) || 0,
     priceRaw: parseFloat(r.price_eur) || 0, priceSize: parseFloat(r.price_per_ml) || 100,
-    url: r.url || ''
+    url: r.url || '', verification: src
   };
 }
 const store = {
@@ -165,8 +168,10 @@ function Dashboard({recipes,setTab}) {
   const verifiedScents=SCENTS.filter(s=>s.ifraSource==="verified").length;
   const urlVerifiedScents=SCENTS.filter(s=>s.ifraSource==="url_verified").length;
   const estimatedScents=SCENTS.length-verifiedScents-urlVerifiedScents;
-  const basesWithPrice=BASES.filter(b=>b.pricePer100&&b.pricePer100>0).length;
-  const basesWithUrl=BASES.filter(b=>b.url&&b.url.includes("youwish.nl/en/shop")).length;
+  const basesVerified=BASES.filter(b=>b.verification==="verified").length;
+  const basesPriceOnly=BASES.filter(b=>b.verification==="price_only").length;
+  const basesUrlOnly=BASES.filter(b=>b.verification==="url_only").length;
+  const basesNeedsCheck=BASES.filter(b=>b.verification==="needs_check").length;
   const latestProduct=recipes.length>0?recipes[recipes.length-1]:null;
 
   const statCard=(icon,label,value,sub,onClick)=>(
@@ -224,12 +229,16 @@ function Dashboard({recipes,setTab}) {
         <div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${border}30`}}>
           <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:13,marginBottom:6,letterSpacing:1}}>BASE INGREDIENTS ({BASES.length} total)</div>
           <div style={{marginBottom:4}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>With price data</span><span style={{color:ok,fontWeight:600}}>{basesWithPrice} / {BASES.length}</span></div>
-            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:ok,width:`${BASES.length>0?basesWithPrice/BASES.length*100:0}%`}}/></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>Verified (price + URL confirmed)</span><span style={{color:ok,fontWeight:600}}>{basesVerified}</span></div>
+            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:ok,width:`${BASES.length>0?basesVerified/BASES.length*100:0}%`}}/></div>
+          </div>
+          <div style={{marginBottom:4}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>Price only (URL needs check)</span><span style={{color:gold,fontWeight:600}}>{basesPriceOnly}</span></div>
+            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:gold,width:`${BASES.length>0?basesPriceOnly/BASES.length*100:0}%`}}/></div>
           </div>
           <div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>With direct product URL</span><span style={{color:gold,fontWeight:600}}>{basesWithUrl} / {BASES.length}</span></div>
-            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:gold,width:`${BASES.length>0?basesWithUrl/BASES.length*100:0}%`}}/></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>Needs checking</span><span style={{color:warn,fontWeight:600}}>{basesUrlOnly+basesNeedsCheck}</span></div>
+            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:warn,width:`${BASES.length>0?(basesUrlOnly+basesNeedsCheck)/BASES.length*100:0}%`}}/></div>
           </div>
         </div>
       </div>
@@ -387,18 +396,19 @@ function IngredientsLib() {
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
         <thead><tr style={{borderBottom:`1px solid ${border}`}}>
-          {["Name","INCI","Role","Max %","Products","Links"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+          {["Name","INCI","Role","Max %","Status","Links"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
         </tr></thead>
         <tbody>{filtered.map(b=>{
           const open=exp===b.name;
           const url=b.url||baseUrl(b.name);
+          const vBadge=b.verification==="verified"?{c:ok,t:"✓ Verified"}:b.verification==="price_only"?{c:gold,t:"Price only"}:b.verification==="url_only"?{c:gold,t:"URL only"}:{c:warn,t:"Needs check"};
           return <React.Fragment key={b.name}>
             <tr onClick={()=>setExp(open?null:b.name)} style={{borderBottom:`1px solid ${border}30`,cursor:"pointer",background:open?bgCard:"transparent",transition:"background .15s"}} onMouseEnter={e=>{if(!open)e.currentTarget.style.background=`${bg}ee`}} onMouseLeave={e=>{if(!open)e.currentTarget.style.background="transparent"}}>
               <td style={{padding:"6px 8px",fontWeight:600}}>{b.name}{b.custom&&<span style={{color:gold,fontSize:9,marginLeft:4}}>✎</span>}</td>
               <td style={{padding:"6px 8px",color:textMuted,fontSize:11,fontStyle:"italic"}}>{b.inci}</td>
               <td style={{padding:"6px 8px"}}><span style={{fontSize:10,padding:"1px 6px",borderRadius:4,background:`${gold}15`,color:gold,fontWeight:600,textTransform:"uppercase"}}>{b.role}</span></td>
               <td style={{padding:"6px 8px",color:textMuted}}>{b.maxPct}%</td>
-              <td style={{padding:"6px 8px",color:textDim,fontSize:10}}>{(b.products||[]).map(p=>PRODUCTS[p]?.name).filter(Boolean).slice(0,3).join(", ")}{(b.products||[]).length>3?"...":""}</td>
+              <td style={{padding:"6px 8px"}}><span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:vBadge.c+"20",color:vBadge.c,fontWeight:600}}>{vBadge.t}</span></td>
               <td style={{padding:"6px 4px"}}><a href={url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{color:gold,fontSize:10,textDecoration:"none",opacity:0.7}}>🔗</a></td>
             </tr>
             {open&&<tr><td colSpan={6} style={{padding:"0 8px 8px",background:bgCard}}><div style={{padding:"10px 14px",borderRadius:8,background:bgInput,border:`1px solid ${border}`}}>
@@ -699,7 +709,6 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
 function Recipes({recipes,save,goBuilder,onEdit}) {
   const [expanded,setExpanded]=useState(null);
   const [pifView,setPifView]=useState(null);
-  const fileRef=useRef(null);
   const del=(id)=>save(recipes.filter(r=>r.id!==id));
   const exportAll=()=>{
     const rows=[];
@@ -718,35 +727,6 @@ function Recipes({recipes,save,goBuilder,onEdit}) {
     const blob=new Blob([rows.join("\n")],{type:"text/csv"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
     a.href=url;a.download=`boegbeeld-products-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
-  };
-  const exportJSON=()=>{
-    const blob=new Blob([JSON.stringify(recipes,null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob);const a=document.createElement("a");
-    a.href=url;a.download=`boegbeeld-products-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
-  };
-  const importFile=(e)=>{
-    const file=e.target.files?.[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=(ev)=>{
-      try{
-        const text=ev.target.result;
-        let imported;
-        if(file.name.endsWith('.json')){
-          imported=JSON.parse(text);
-        } else {
-          // Try JSON parse first (in case CSV contains full recipe JSON)
-          try{imported=JSON.parse(text);}catch(e){
-            alert("For importing, please use the JSON backup file. CSV export is for viewing in Google Sheets.");return;
-          }
-        }
-        if(Array.isArray(imported)){
-          const merged=[...recipes];
-          imported.forEach(r=>{if(!merged.find(x=>x.id===r.id))merged.push({...r,id:r.id||Date.now()+Math.random()});});
-          save(merged);alert(`Imported ${imported.length} product(s). ${merged.length} total.`);
-        }
-      }catch(err){alert("Invalid file format.");}
-    };
-    reader.readAsText(file);e.target.value="";
   };
   const copyForSheet=(r)=>{
     const rows=[];
@@ -768,17 +748,13 @@ function Recipes({recipes,save,goBuilder,onEdit}) {
     <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Saved Products</h3>
     <p style={{color:textMuted,fontSize:13}}>Build your first formulation in the Product Builder.</p>
     <button onClick={goBuilder} style={{...btn,background:gold,color:bg,fontWeight:600,padding:"10px 24px",marginTop:10}}>Open Product Builder</button>
-    <div style={{marginTop:10}}><button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📤 Import Products from JSON</button><input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/></div>
   </div>;
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Saved Products</h2>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:12}}>
       <p style={{color:textMuted,fontSize:12,margin:0}}>Click a recipe to view summary and download product specification.</p>
       <div style={{display:"flex",gap:6}}>
-        <button onClick={exportAll} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export CSV (for Sheets)</button>
-        <button onClick={exportJSON} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export JSON (backup)</button>
-        <button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📤 Import (JSON)</button>
-        <input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/>
+        <button onClick={exportAll} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export CSV</button>
       </div>
     </div>
     {recipes.map(r=>{
