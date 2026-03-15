@@ -82,177 +82,9 @@ const PRODUCTS = {
   body_wash:     { name: "Body Wash",        cat: "9",  test: 100, tU: "ml", prod: 1000, pU: "ml" },
   shampoo:       { name: "Shampoo",          cat: "9",  test: 100, tU: "ml", prod: 1000, pU: "ml" },
 };
-const S = (name,type,fam,note,prof,masc,ifra,src) => ({name,type,family:fam,note,profile:prof,masculine:masc,ifra,ifraSource:src||"estimated"});
-const FO_DEF = {"4":9.02,"5A":6.33,"5B":0.39,"5C":1.56,"7B":1.0,"9":3.57,"2":1.33};
-const FO = (n,fam,note,prof,masc,ovr) => S(n,"FO",fam,note,prof,masc,{...FO_DEF,...(ovr||{})},"verified");
-const EO = (n,fam,note,prof,masc,ifra) => S(n,"EO",fam,note,prof,masc,ifra,"estimated");
-const SCENTS = [
-  // === ESSENTIAL OILS (from YouWish EO catalog + your list) ===
-  EO("Ambrette Seed","Musk / Animalic","base","Warm musky floral, wine-like, natural musk alternative",3,{"4":100,"5A":100,"5B":100,"5C":100,"7B":100,"9":100,"2":100}),
-  EO("Bay Leaf","Aromatic / Herbal","top-mid","Spicy herbal, warm bay rum character, classic barbershop",5,{"4":3.0,"5A":1.5,"5B":0.5,"5C":0.8,"7B":1.0,"9":3.0,"2":1.0}),
-  EO("Bergamot","Citrus","top","Fresh citrus, slightly floral, sophisticated Italian",4,{"4":5.0,"5A":3.0,"5B":1.5,"5C":2.0,"7B":2.0,"9":5.0,"2":2.5}),
-  EO("Black Pepper","Spicy","top-mid","Sharp warm spice, dry woody undertone",5,{"4":8.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":3.0,"9":8.0,"2":3.0}),
-  EO("Cardamom","Spicy / Aromatic","top-mid","Sweet spicy, warm eucalyptus-camphor hint",4,{"4":10,"5A":6.0,"5B":3.0,"5C":4.0,"7B":4.0,"9":10,"2":4.0}),
-  EO("Cedarwood","Woody","base","Warm dry wood, pencil shavings, grounding",5,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Cinnamon Leaf","Spicy / Warm","mid","Warm spicy cinnamon, use sparingly — skin sensitizer",4,{"4":1.5,"5A":0.5,"5B":0.2,"5C":0.3,"7B":0.3,"9":1.5,"2":0.4}),
-  EO("Clove Leaf","Spicy / Warm","mid","Rich eugenol spice, warm depth, use sparingly",4,{"4":2.0,"5A":0.8,"5B":0.3,"5C":0.5,"7B":0.5,"9":2.0,"2":0.5}),
-  EO("Copaiba Balsam","Resinous / Woody","base","Soft balsamic, honey-like, woody, anti-inflammatory",4,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Cypress","Woody / Green","mid","Fresh green coniferous, clean forest air",5,{"4":12,"5A":7.0,"5B":3.5,"5C":4.0,"7B":5.0,"9":12,"2":5.0}),
-  EO("Ginger","Spicy / Fresh","top","Warm zingy spice, energizing, fresh",4,{"4":5.0,"5A":3.0,"5B":1.5,"5C":2.0,"7B":2.0,"9":5.0,"2":2.0}),
-  EO("Grapefruit","Citrus","top","Bright tangy citrus, slightly bitter, uplifting",3,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Grapefruit White","Citrus","top","Cleaner lighter grapefruit, less bitter, fresher",3,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Indian Frankincense","Resinous / Incense","base","Sacred resinous, warm smoky incense, meditative",5,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Juniper","Woody / Green","top-mid","Fresh gin-like, piney and crisp",5,{"4":10,"5A":6.0,"5B":3.0,"5C":4.0,"7B":4.0,"9":10,"2":4.0}),
-  EO("Lavender","Herbal / Floral","mid","Classic herbal floral, calming, versatile",3,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Lemon Grass","Citrus / Herbal","top","Fresh lemony herbal, bright, high citral — sensitizer",3,{"4":3.0,"5A":1.5,"5B":0.5,"5C":0.8,"7B":1.0,"9":3.0,"2":1.0}),
-  EO("Lemon Verbena","Citrus / Herbal","top","Delicate lemon, herbaceous, elegant",3,{"4":2.0,"5A":1.0,"5B":0.3,"5C":0.5,"7B":0.5,"9":2.0,"2":0.5}),
-  EO("Lime","Citrus","top","Zesty sharp citrus, vibrant energy",4,{"4":6.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":2.5,"9":6.0,"2":2.5}),
-  EO("Litsea Cubeba","Citrus / Herbal","top","Lemony sweet tropical, may chang character",3,{"4":4.0,"5A":2.0,"5B":1.0,"5C":1.5,"7B":1.5,"9":4.0,"2":1.5}),
-  EO("Mandarin","Citrus","top","Sweet soft citrus, rounded and friendly",3,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Myrrh","Resinous / Balsamic","base","Deep warm resinous, slightly medicinal, ancient",5,{"4":12,"5A":8.0,"5B":4.0,"5C":5.0,"7B":6.0,"9":12,"2":6.0}),
-  EO("Orange 5x","Citrus","top","Concentrated sweet orange, 5-fold, intense",3,{"4":3.0,"5A":2.0,"5B":0.8,"5C":1.0,"7B":1.2,"9":3.0,"2":1.2}),
-  EO("Palmarosa","Floral / Herbal","mid","Rose-like geranium, sweet grassy",2,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Patchouli","Woody / Earthy","base","Deep earthy, musky, camphoraceous sweet",4,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Petitgrain","Citrus / Green","top-mid","Green bitter orange leaf, woody citrus",4,{"4":12,"5A":8.0,"5B":4.0,"5C":5.0,"7B":6.0,"9":12,"2":6.0}),
-  EO("Pine Needle","Woody / Green","top","Fresh forest, Christmas tree, turpentine hint",5,{"4":8.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":3.0,"9":8.0,"2":3.0}),
-  EO("Rosemary","Herbal / Camphor","top-mid","Herbal camphor, fresh, Mediterranean",4,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Rosewood","Woody / Floral","mid","Sweet woody floral, linalool-rich, elegant",3,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Sage","Herbal / Camphor","top-mid","Herbal camphorous, dry and cleansing",4,{"4":5.0,"5A":3.0,"5B":1.5,"5C":2.0,"7B":2.0,"9":5.0,"2":2.0}),
-  EO("Sandalwood Amyris","Woody / Creamy","base","Creamy woody, softer than true sandalwood",4,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Spearmint","Herbal / Fresh","top","Sweet cool mint, gentler than peppermint",3,{"4":8.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":3.0,"9":8.0,"2":3.0}),
-  EO("Sweet Birch","Woody / Minty","top-mid","Wintergreen-like, medicinal sweet — use sparingly",4,{"4":2.0,"5A":0.8,"5B":0.3,"5C":0.5,"7B":0.5,"9":2.0,"2":0.5}),
-  EO("Sweet Orange","Citrus","top","Bright cheerful orange peel, uplifting",3,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Thyme","Herbal / Spicy","mid","Strong herbal, thymol-rich — skin sensitizer",4,{"4":2.0,"5A":0.8,"5B":0.3,"5C":0.5,"7B":0.5,"9":2.0,"2":0.5}),
-  S("Vanilla CO2 Extract","CO2","Gourmand / Sweet","base","Rich natural vanilla, warm comforting depth, thick",3,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Vetiver Java","Woody / Earthy","base","Deep smoky earthy, complex dark wood",5,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Ylang Ylang","Floral / Exotic","mid","Sweet exotic floral, heady, use sparingly in masc blends",2,{"4":5.0,"5A":3.0,"5B":1.5,"5C":2.0,"7B":2.0,"9":5.0,"2":2.0}),
-  // Additional EOs from YouWish catalog useful for men's grooming
-  EO("Neroli (Orange Blossom)","Floral / Citrus","mid","Orange blossom, honeyed, elegant, expensive",3,{"4":8.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":3.0,"9":8.0,"2":3.0}),
-  EO("Eucalyptus","Herbal / Camphor","top","Sharp camphor, clearing, medicinal fresh",3,{"4":8.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":3.0,"9":8.0,"2":3.0}),
-  EO("Tea Tree","Herbal / Medicinal","top-mid","Clean medicinal, antibacterial, sharp",3,{"4":5.0,"5A":3.0,"5B":1.5,"5C":2.0,"7B":2.0,"9":5.0,"2":2.0}),
-  EO("Clary Sage","Herbal / Floral","mid","Herbaceous, slightly sweet, earthy floral",3,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Geranium","Floral / Green","mid","Sweet rosy green, balancing, versatile",3,{"4":10,"5A":6.0,"5B":3.0,"5C":4.0,"7B":4.0,"9":10,"2":4.0}),
-  EO("Ho Wood","Woody / Floral","mid","Similar to rosewood, linalool-rich, sustainable",3,{"4":15,"5A":10,"5B":5.0,"5C":6.0,"7B":8.0,"9":15,"2":8.0}),
-  EO("Silver Fir","Woody / Green","top","Alpine forest, fresh balsamic, crisp mountain air",5,{"4":8.0,"5A":4.0,"5B":2.0,"5C":2.5,"7B":3.0,"9":8.0,"2":3.0}),
-  EO("Marjoram","Herbal / Warm","mid","Warm herbaceous, grounding, calming middle note",3,{"4":8.0,"5A":5.0,"5B":2.5,"5C":3.0,"7B":3.5,"9":8.0,"2":3.5}),
-  EO("Nutmeg","Spicy / Warm","mid","Warm spicy nutmeg, rich aromatic",4,{"4":5.0,"5A":3.0,"5B":1.0,"5C":1.5,"7B":2.0,"9":5.0,"2":2.0}),
-  EO("Basil","Herbal / Green","top","Fresh green herbal, slightly anise, energizing",3,{"4":5.0,"5A":3.0,"5B":1.5,"5C":2.0,"7B":2.0,"9":5.0,"2":2.0}),
-  // === FRAGRANCE OILS (parfumoliën) — YouWish catalog for men's grooming ===
-  FO("Amberwood Twilight","Woody / Amber","base","Rich amber woods, warm twilight glow",4),
-  FO("Anarchy","Aromatic / Spicy","mid","Bold rebellious, dark spice and musk",5),
-  FO("Arabic Tonka","Oriental / Gourmand","base","Sweet tonka bean, warm Oriental coumarin depth",4),
-  FO("Ayurveda","Herbal / Oriental","mid-base","Complex herbal, incense, meditative warmth",4),
-  FO("Bay Rum","Spicy / Aromatic","mid","Classic barbershop bay rum, spice and citrus",5),
-  FO("Boss in a Bottle Fragrance","Aromatic / Woody","mid-base","Designer-inspired: green apple, cinnamon, sandalwood",5),
-  FO("Bourbon Street","Gourmand / Boozy","mid-base","Rich bourbon, caramel, oak barrel, vanilla",5),
-  FO("Candied Citrus","Citrus / Gourmand","top","Sweet sugar-coated citrus, playful",2),
-  FO("Cardamom & Cedar","Spicy / Woody","mid-base","Warm cardamom with dry cedar backbone",5),
-  FO("Cashmere Noir & Oudh","Woody / Oriental","base","Dark luxurious oudh, soft cashmere, noir mood",5),
-  FO("Cavalier","Aromatic / Fougère","mid","Classic masculine fougère: lavender, oak, musk",5),
-  FO("Cedar & Amber","Woody / Amber","base","Warm cedar layered with golden amber resin",5),
-  FO("Celestial Vanilla & Leather","Gourmand / Leather","base","Smooth vanilla wrapped in rich leather",5),
-  FO("Coconut Cream","Gourmand / Tropical","mid","Rich creamy coconut, sweet tropical",2),
-  FO("Cranberry","Fruity / Tart","top","Sharp tart berry, slightly sweet",2),
-  FO("Cucumber","Green / Fresh","top","Cool crisp green, aquatic freshness",3),
-  FO("Driftwood & Amber","Woody / Amber","base","Sun-dried wood, warm amber, coastal feel",4),
-  FO("Fiery Pink Pepper & Oudh","Spicy / Woody","mid-base","Electric pink pepper heat meets dark oudh",5),
-  FO("Fireplace in the Salon","Smoky / Woody","base","Crackling fire, smoky woods, leather salon warmth",5),
-  FO("Forest Oudh & Balm","Woody / Balsamic","base","Deep forest floor, precious oudh, healing balm",5),
-  FO("Frozen Margarita","Citrus / Gourmand","top","Zesty lime, salt, tequila sweetness",2),
-  FO("Garlands & Pine","Woody / Green","top-mid","Christmas garland, fresh pine, festive",4),
-  FO("Ginger Ale","Spicy / Fresh","top","Fizzy ginger, sweet citrus, effervescent",3),
-  FO("Glowing Tobacco & Pimento","Tobacco / Spicy","mid-base","Warm glowing tobacco, allspice pimento heat",5),
-  FO("Golden Pumpkin & Cardamom","Gourmand / Spicy","mid","Autumn pumpkin, golden cardamom spice",3),
-  FO("Green Apple","Fruity / Green","top","Crisp tart green apple, fresh clean",3),
-  FO("Green Fig","Fruity / Green","mid","Fresh green fig leaf, milky, slightly sweet",3),
-  FO("Green Tea & Cactus Flower","Green / Floral","top-mid","Light green tea, delicate cactus bloom",3),
-  FO("Hammam","Herbal / Warm","mid","Turkish bath, eucalyptus, warm steam, herbs",4),
-  FO("Hickory & Suede","Woody / Leather","mid-base","Bergamot, leather, lavender, cypress, sandalwood, suede, tobacco",5),
-  FO("Jing Jang","Oriental / Balance","mid","East-meets-West, herbal and warm balance",3),
-  FO("Lime Basil & Mandarin","Citrus / Herbal","top","Jo Malone inspired: zesty lime, basil, mandarin",4),
-  FO("Magnolia Leaf & Tonka","Floral / Gourmand","mid-base","Creamy magnolia, sweet tonka, soft",3),
-  FO("Monoi de Tahiti","Tropical / Floral","mid","Gardenia-infused coconut oil, tropical",2),
-  FO("Musk","Musk / Clean","base","Clean white musk, soft skin-like",3),
-  FO("Natural Coconut Milk","Gourmand / Tropical","mid","Creamy natural coconut, soft milky",2),
-  FO("Neroli & Shea Blossom","Floral / Citrus","mid","Orange blossom, honeyed, shea flower",2),
-  FO("Oudh & Purple Patchouli","Woody / Earthy","base","Rich oudh, dark patchouli, deep mystical",5),
-  FO("Palo Santo & Mahogany","Woody / Sacred","base","Holy wood, rich mahogany, spiritual warmth",5),
-  FO("Pistachio & Salted Fig","Gourmand / Nutty","mid","Creamy pistachio, sweet salted fig",3),
-  FO("Raw Honeycomb","Gourmand / Amber","mid-base","Natural beeswax honey, golden warm",3),
-  FO("Royal Oudh Inspired","Woody / Oriental","base","Premium oudh accord, rose, saffron, regal",5),
-  FO("Saffron & Oudh","Spicy / Woody","mid-base","Precious saffron, dark oudh, luxurious",5),
-  FO("Sensual Sandalwood","Woody / Creamy","base","Smooth creamy sandalwood, sensual, skin-like",4),
-  FO("Seventh Heaven","Oriental / Gourmand","base","Heavenly amber, vanilla, celestial warmth",3),
-  FO("Shave & Cut Fragrance","Aromatic / Barbershop","mid","Classic barbershop, clean shave, powder musk",5),
-  FO("Silver Sandalwood & Musk","Woody / Musk","base","Cool silver sandalwood, clean musk, modern",4),
-  FO("Somali Soul","Resinous / Incense","base","Rich frankincense, myrrh, warm African soul",5),
-  FO("Spiced Mahogany","Woody / Spicy","mid-base","Dark mahogany, clove and nutmeg spice",5),
-  FO("Sweet Honey & Tobacco","Gourmand / Tobacco","mid-base","Golden honey, warm cured tobacco leaf",4),
-  FO("Tobacco & Bay Leaf","Tobacco / Herbal","mid-base","Aromatic tobacco, warm bay laurel, classic",5),
-  FO("Transformation","Aromatic / Complex","mid","Multi-faceted evolving blend",3),
-  FO("Vintage Leather & Turmeric","Leather / Spicy","mid-base","Aged leather, golden turmeric, vintage",5),
-  FO("Warm Birch Wood","Woody / Smoky","base","Warm birch, slightly smoky campfire glow",5),
-  FO("Wild Violets & Peony","Floral / Green","mid","Sweet violet, lush peony, powdery",1),
-  // Extra YouWish FOs that fit men's grooming or could be useful
-  FO("Africa Inspired","Woody / Fougère","mid","Rich woody fougère, mandarin, bergamot, herbs, oak",5),
-  FO("Bergamot Black Tea","Citrus / Tea","top-mid","Bright bergamot meets black tea depth",4),
-  FO("Dark Honey & Tobacco","Gourmand / Tobacco","base","Dark amber honey, rich cured tobacco",5),
-  FO("Leather & Oud","Leather / Woody","base","Rich tanned leather, dark precious oud",5),
-  FO("Noir Amber","Amber / Dark","base","Dark mysterious amber, resinous depth, smoky",5),
-  FO("Sandalwood & Musk","Woody / Musk","base","Classic sandalwood cream with clean musk",4),
-  FO("Tobacco Vanille Inspired","Gourmand / Tobacco","base","Tom Ford inspired: tobacco, vanilla, spice, honey",5),
-  FO("Vetiver & Golden Amber","Woody / Amber","base","Earthy vetiver meets warm golden amber",5),
-  FO("Whiskey & Smoke","Smoky / Boozy","base","Smoky peat, aged whiskey, warm amber",5),
-  FO("Wood Sage & Sea Salt","Aromatic / Marine","mid","Jo Malone inspired: ambrette, sage, sea salt, driftwood",4),
-];
-const BASES = [
-  // CARRIER OILS
-  {name:"Jojoba Oil",inci:"Simmondsia Chinensis Seed Oil",role:"carrier",products:["beard_oil","body_lotion","hand_cream"],notes:"Closest to skin sebum. Non-comedogenic. Premium base.",youwish:true,maxPct:100,defaultPct:40},
-  {name:"Jojoba Oil (Clear/Deodorized)",inci:"Simmondsia Chinensis Seed Oil",role:"carrier",products:["beard_oil","pomade"],notes:"Same as golden but no scent — won't interfere with fragrance.",youwish:true,maxPct:100,defaultPct:40},
-  {name:"Argan Oil (Deodorized)",inci:"Argania Spinosa Kernel Oil",role:"carrier",products:["beard_oil","body_lotion"],notes:"Rich vitamin E, softening, deodorized for clean scent profile.",youwish:true,maxPct:100,defaultPct:25},
-  {name:"Sweet Almond Oil",inci:"Prunus Amygdalus Dulcis Oil",role:"carrier",products:["beard_oil","body_lotion","hand_cream"],notes:"Light, good absorption, mild nutty scent.",youwish:true,maxPct:100,defaultPct:25},
-  {name:"Castor Oil",inci:"Ricinus Communis Seed Oil",role:"carrier",products:["beard_oil","pomade","soap_bar"],notes:"Thick, glossy, binding. Creates lather in soap.",youwish:true,maxPct:30,defaultPct:10},
-  {name:"Castor Oil (Cold-Pressed Organic)",inci:"Ricinus Communis Seed Oil",role:"carrier",products:["beard_oil","pomade"],notes:"Organic cold-pressed version. Premium quality.",youwish:true,maxPct:30,defaultPct:10},
-  {name:"Sunflower Oil",inci:"Helianthus Annuus Seed Oil",role:"carrier",products:["pomade","body_lotion","soap_bar"],notes:"Light conditioning, vitamin E rich, affordable base.",youwish:true,maxPct:100,defaultPct:15},
-  {name:"Grapeseed Oil",inci:"Vitis Vinifera Seed Oil",role:"carrier",products:["beard_oil","body_lotion"],notes:"Very light, fast absorbing, non-greasy.",youwish:true,maxPct:100,defaultPct:20},
-  {name:"Hemp Seed Oil (Organic)",inci:"Cannabis Sativa Seed Oil",role:"carrier",products:["beard_oil","body_lotion"],notes:"Rich omega fatty acids, fast absorbing, green tint.",youwish:true,maxPct:100,defaultPct:15},
-  {name:"Avocado Oil",inci:"Persea Gratissima Oil",role:"carrier",products:["beard_oil","body_lotion","hand_cream"],notes:"Rich, nourishing, slower absorbing. Good for dry skin.",youwish:true,maxPct:100,defaultPct:15},
-  {name:"Coconut Oil (Fractionated)",inci:"Caprylic/Capric Triglyceride",role:"carrier",products:["beard_oil","body_lotion","perfume_edp"],notes:"Always liquid, odorless, light. Good perfume carrier.",youwish:true,maxPct:100,defaultPct:20},
-  // WAXES
-  {name:"Berry Wax",inci:"Rhus Verniciflua Peel Cera",role:"wax",products:["pomade","solid_cologne"],notes:"Plant wax for hold and texture. Medium hold.",youwish:true,maxPct:25,defaultPct:8},
-  {name:"Carnauba Wax",inci:"Copernicia Cerifera Cera",role:"wax",products:["pomade","solid_cologne"],notes:"Hardest natural wax. High hold, shine.",youwish:true,maxPct:15,defaultPct:4},
-  {name:"Beeswax (White)",inci:"Cera Alba",role:"wax",products:["pomade","solid_cologne","hand_cream"],notes:"Natural hold, slight honey scent. Classic pomade ingredient.",youwish:true,maxPct:30,defaultPct:10},
-  {name:"Beeswax (Yellow)",inci:"Cera Flava",role:"wax",products:["pomade","solid_cologne"],notes:"Unbleached beeswax. Stronger honey scent.",youwish:true,maxPct:30,defaultPct:10},
-  {name:"Candelilla Wax",inci:"Euphorbia Cerifera Cera",role:"wax",products:["pomade","solid_cologne"],notes:"Vegan wax alternative to beeswax. Hard, glossy.",youwish:true,maxPct:20,defaultPct:6},
-  {name:"Sunflower Wax",inci:"Helianthus Annuus Seed Cera",role:"wax",products:["pomade","solid_cologne"],notes:"Vegan, high melting point, natural origin.",youwish:true,maxPct:15,defaultPct:5},
-  // BUTTERS
-  {name:"Shea Butter",inci:"Butyrospermum Parkii Butter",role:"carrier",products:["pomade","body_lotion","hand_cream","solid_cologne"],notes:"Rich, nourishing, adds creaminess and body.",youwish:true,maxPct:50,defaultPct:10},
-  {name:"Cocoa Butter",inci:"Theobroma Cacao Seed Butter",role:"carrier",products:["pomade","solid_cologne","body_lotion"],notes:"Hard butter, chocolate scent. Firmness + nourishment.",youwish:true,maxPct:30,defaultPct:8},
-  {name:"Mango Butter",inci:"Mangifera Indica Seed Butter",role:"carrier",products:["body_lotion","hand_cream"],notes:"Light, non-greasy butter. Good skin feel.",youwish:true,maxPct:40,defaultPct:10},
-  // EMULSIFIERS
-  {name:"Olivem 1000",inci:"Cetearyl Olivate, Sorbitan Olivate",role:"emulsifier",products:["pomade","body_lotion","hand_cream"],notes:"Olive-derived O/W emulsifier. Creates stable lotions.",youwish:true,maxPct:8,defaultPct:5},
-  {name:"BTMS-50",inci:"Behentrimonium Methosulfate, Cetyl Alcohol",role:"emulsifier",products:["body_lotion","hand_cream"],notes:"Conditioning emulsifier. Hair/skin feel.",youwish:true,maxPct:8,defaultPct:5},
-  // PRESERVATIVES & ANTIOXIDANTS
-  {name:"Vitamin E Oil (Tocopherol)",inci:"Tocopherol",role:"preservative",products:["beard_oil","pomade","body_lotion","hand_cream","solid_cologne"],notes:"Antioxidant. Prevents oil rancidity. Skin nourishing. 0.5-1%.",youwish:true,maxPct:2,defaultPct:0.5},
-  {name:"Glyceryl Caprylate",inci:"Glyceryl Caprylate",role:"preservative",products:["pomade","body_lotion","hand_cream"],notes:"Mild preservative booster. Coconut-derived.",youwish:true,maxPct:2,defaultPct:1},
-  {name:"Rosemary Extract (ROE)",inci:"Rosmarinus Officinalis Leaf Extract",role:"preservative",products:["beard_oil","pomade","body_lotion"],notes:"Natural antioxidant for oils. Extends shelf life.",youwish:true,maxPct:0.5,defaultPct:0.2},
-  // SOLVENTS & BASES
-  {name:"Demi Water (Aqua)",inci:"Aqua",role:"solvent",products:["pomade","body_lotion","hand_cream","body_wash","shampoo"],notes:"Demineralized water. Water phase base.",youwish:true,maxPct:80,defaultPct:50},
-  {name:"Parfumeurs Alcohol",inci:"Alcohol Denat.",role:"solvent",products:["perfume_edp","perfume_edt","aftershave"],notes:"Denatured ethanol base for perfume. Denatured ethanol for perfume.",youwish:true,maxPct:95,defaultPct:80},
-  // SURFACTANTS & CLEANSERS
-  {name:"Cocofoam (Coco Glucoside)",inci:"Coco-Glucoside",role:"surfactant",products:["pomade","body_wash","shampoo"],notes:"Gentle plant-derived cleanser. Wash-out aid in pomade.",youwish:true,maxPct:15,defaultPct:5},
-  {name:"Sodium Cocoyl Isethionate (SCI)",inci:"Sodium Cocoyl Isethionate",role:"surfactant",products:["soap_bar","shampoo"],notes:"Gentle coconut-derived surfactant. Syndet bars.",youwish:true,maxPct:60,defaultPct:40},
-  // TEXTURIZERS & ACTIVES
-  {name:"Diatomaceous Earth",inci:"Diatomaceous Earth",role:"texturizer",products:["pomade"],notes:"Natural matte finish. Absorbs oil, adds body to pomade.",youwish:true,maxPct:8,defaultPct:3},
-  {name:"Triethyl Citrate",inci:"Triethyl Citrate",role:"active",products:["pomade","aftershave"],notes:"Citric acid ester. Deodorant properties. Fragrance fixative.",youwish:true,maxPct:5,defaultPct:2},
-  {name:"Glycerine (Vegetable)",inci:"Glycerin",role:"active",products:["pomade","body_lotion","hand_cream","soap_bar","body_wash"],notes:"Humectant. Draws moisture to skin. Versatile.",youwish:true,maxPct:10,defaultPct:3},
-  {name:"Kaolin Clay",inci:"Kaolin",role:"texturizer",products:["pomade"],notes:"White clay. Matte finish, oil absorption, texture.",youwish:true,maxPct:10,defaultPct:3},
-  {name:"Bentonite Clay",inci:"Bentonite",role:"texturizer",products:["pomade"],notes:"Strong oil absorption. Matte hold. Thickening.",youwish:true,maxPct:8,defaultPct:2},
-  {name:"D-Panthenol (Provitamin B5)",inci:"Panthenol",role:"active",products:["body_lotion","hand_cream","shampoo","body_wash"],notes:"Moisturizing, healing, hair strengthening. 1-5%.",youwish:true,maxPct:5,defaultPct:2},
-  {name:"Allantoin",inci:"Allantoin",role:"active",products:["aftershave","body_lotion","hand_cream"],notes:"Soothing, anti-irritant. Great in aftershave. 0.1-0.5%.",youwish:true,maxPct:0.5,defaultPct:0.2},
-];
-// Packaging items loaded from Google Sheet (tab: packaging)
-let PACKAGING_ITEMS = [];
+let SCENTS = []; // Loaded from Google Sheet
+let BASES = []; // Loaded from Google Sheet
+let PACKAGING_ITEMS = []; // Loaded from Google Sheet
 function rowToPackaging(r) {
   return {
     name: r.name||'', description: r.description||'', category: r.category||'container',
@@ -1620,28 +1452,20 @@ function SheetsApp() {
         const sRes = await fetch(SHEETS_CONFIG.scents);
         if (sRes.ok) {
           const rows = parseCSV(await sRes.text()).filter(r => r.name);
-          rows.forEach(r => {
-            const s = rowToScent(r);
-            const idx = SCENTS.findIndex(x => x.name === s.name);
-            if (idx >= 0) SCENTS[idx] = {...SCENTS[idx], ...s, ifra: {...SCENTS[idx].ifra, ...s.ifra}};
-            else SCENTS.push(s);
-          });
-          setStatus("Scents loaded. Loading base ingredients...");
+          SCENTS.length = 0;
+          rows.forEach(r => SCENTS.push(rowToScent(r)));
+          setStatus("Scents loaded (" + SCENTS.length + "). Loading base ingredients...");
         }
       } catch(e) { console.warn("Scents sheet:", e); }
       try {
         const bRes = await fetch(SHEETS_CONFIG.bases);
         if (bRes.ok) {
           const rows = parseCSV(await bRes.text()).filter(r => r.name);
-          rows.forEach(r => {
-            const b = rowToBase(r);
-            const idx = BASES.findIndex(x => x.name === b.name);
-            if (idx >= 0) BASES[idx] = {...BASES[idx], ...b};
-            else BASES.push(b);
-          });
+          BASES.length = 0;
+          rows.forEach(r => BASES.push(rowToBase(r)));
+          setStatus("Bases loaded (" + BASES.length + "). Loading packaging...");
         }
       } catch(e) { console.warn("Bases sheet:", e); }
-      // Load packaging
       try {
         if (SHEETS_CONFIG.packaging) {
           const pRes = await fetch(SHEETS_CONFIG.packaging);
@@ -1649,10 +1473,10 @@ function SheetsApp() {
             const rows = parseCSV(await pRes.text()).filter(r => r.name);
             PACKAGING_ITEMS.length = 0;
             rows.forEach(r => PACKAGING_ITEMS.push(rowToPackaging(r)));
-            setStatus("All data loaded.");
           }
         }
       } catch(e) { console.warn("Packaging sheet:", e); }
+      setStatus("All data loaded.");
       setReady(true);
     };
     load();
