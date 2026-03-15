@@ -238,7 +238,7 @@ const BASES = [
   {name:"Rosemary Extract (ROE)",inci:"Rosmarinus Officinalis Leaf Extract",role:"preservative",products:["beard_oil","pomade","body_lotion"],notes:"Natural antioxidant for oils. Extends shelf life.",youwish:true,maxPct:0.5,defaultPct:0.2},
   // SOLVENTS & BASES
   {name:"Demi Water (Aqua)",inci:"Aqua",role:"solvent",products:["pomade","body_lotion","hand_cream","body_wash","shampoo"],notes:"Demineralized water. Water phase base.",youwish:true,maxPct:80,defaultPct:50},
-  {name:"Parfumeurs Alcohol",inci:"Alcohol Denat.",role:"solvent",products:["perfume_edp","perfume_edt","aftershave"],notes:"Denatured ethanol base for perfume. From YouWish.",youwish:true,maxPct:95,defaultPct:80},
+  {name:"Parfumeurs Alcohol",inci:"Alcohol Denat.",role:"solvent",products:["perfume_edp","perfume_edt","aftershave"],notes:"Denatured ethanol base for perfume. Denatured ethanol for perfume.",youwish:true,maxPct:95,defaultPct:80},
   // SURFACTANTS & CLEANSERS
   {name:"Cocofoam (Coco Glucoside)",inci:"Coco-Glucoside",role:"surfactant",products:["pomade","body_wash","shampoo"],notes:"Gentle plant-derived cleanser. Wash-out aid in pomade.",youwish:true,maxPct:15,defaultPct:5},
   {name:"Sodium Cocoyl Isethionate (SCI)",inci:"Sodium Cocoyl Isethionate",role:"surfactant",products:["soap_bar","shampoo"],notes:"Gentle coconut-derived surfactant. Syndet bars.",youwish:true,maxPct:60,defaultPct:40},
@@ -358,7 +358,7 @@ function Library() {
   const scentUrl=(name)=>{const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-$/,"");return `https://www.youwish.nl/en/?s=${encodeURIComponent(name)}&post_type=product`;};
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Scent Library <span style={{fontSize:11,color:textMuted,fontFamily:"'Open Sans'",letterSpacing:0,textTransform:"none"}}>({allScents.length} scents)</span></h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>YouWish fragrance oils & essential oils. Click any row to expand IFRA details. Filter by category to see max %.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Click any row to expand IFRA details. Filter by category to see max %.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12,alignItems:"center"}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search scent, profile, family..." style={{...inp,flex:"1 1 180px",minWidth:150}}/>
       <select value={tf} onChange={e=>setTf(e.target.value)} style={{...inp,width:130}}><option value="all">All Types</option><option value="EO">Essential Oil</option><option value="FO">Fragrance Oil</option><option value="CO2">CO₂ Extract</option></select>
@@ -408,7 +408,7 @@ function Library() {
                 </div>})}
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <a href={s.url||scentUrl(s.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View on YouWish -></a>
+                <a href={s.url||scentUrl(s.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View at supplier →</a>
                 {s.custom&&<button onClick={()=>saveCustoms(customs.filter(c=>c.name!==s.name))} style={{...btn,color:danger,background:"transparent",border:`1px solid ${danger}30`,fontSize:10}}>Remove</button>}
               </div>
             </div></td></tr>}
@@ -448,7 +448,7 @@ function IngredientsLib() {
   const baseUrl=(name)=>`https://www.youwish.nl/en/?s=${encodeURIComponent(name)}&post_type=product`;
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Base Ingredients <span style={{fontSize:11,color:textMuted,fontFamily:"'Open Sans'",letterSpacing:0,textTransform:"none"}}>({allBases.length})</span></h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Base ingredients from YouWish. Click to expand details. Links go to YouWish product search.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Base ingredients for your formulations. Click to expand details.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search ingredient or INCI..." style={{...inp,flex:"1 1 200px"}}/>
       <select value={rf} onChange={e=>setRf(e.target.value)} style={{...inp,width:150}}><option value="all">All Roles</option>{roles.map(r=><option key={r} value={r}>{r}</option>)}</select>
@@ -473,10 +473,10 @@ function IngredientsLib() {
             </tr>
             {open&&<tr><td colSpan={6} style={{padding:"0 8px 8px",background:bgCard}}><div style={{padding:"10px 14px",borderRadius:8,background:bgInput,border:`1px solid ${border}`}}>
               <div style={{fontSize:11,color:textMain,marginBottom:6}}><strong style={{color:gold}}>Notes:</strong> {b.notes}</div>
-              <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Default %: {b.defaultPct}% · Max: {b.maxPct}% · €{(b.pricePer100||0).toFixed(2)}/{b.priceSize||100}ml · {b.youwish?"YouWish":"External"}</div>
+              <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Default %: {b.defaultPct}% · Max: {b.maxPct}% · €{(b.pricePer100||0).toFixed(2)}/{b.priceSize||100}ml · {b.youwish?"Supplier":"External"}</div>
               <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Used in: {(b.products||[]).map(p=>PRODUCTS[p]?.name).filter(Boolean).join(", ")}</div>
               <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6,textDecoration:"none"}}>📝 Edit in Sheet</a>
-              <a href={b.url||baseUrl(b.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View on YouWish -></a>
+              <a href={b.url||baseUrl(b.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View at supplier →</a>
               {b.custom&&<button onClick={()=>saveCustoms(customs.filter(c=>c.name!==b.name))} style={{...btn,marginLeft:10,color:danger,background:"transparent",border:`1px solid ${danger}30`,fontSize:10}}>Remove</button>}
             </div></td></tr>}
           </React.Fragment>;
@@ -507,12 +507,21 @@ function Builder({recipes,save,goRecipes}) {
     if(baseRows.find(r=>r.name===bName))return;
     const b=BASES.find(x=>x.name===bName);
     if(!b)return;
-    setBaseRows([...baseRows,{name:bName,pct:b.defaultPct,grams:+(b.defaultPct/100*batchSize).toFixed(3),mode:"grams"}]);
+    // Vitamin E, ROE default to drops mode
+    const useDrops=b.name.includes("Vitamin E")||b.name.includes("Rosemary Extract");
+    if(useDrops){
+      const drops=Math.round(b.defaultPct/100*batchSize/DROP_ML);
+      const ml=drops*DROP_ML;
+      setBaseRows([...baseRows,{name:bName,pct:+(ml/batchSize*100).toFixed(3),grams:+ml.toFixed(3),drops,mode:"drops"}]);
+    } else {
+      setBaseRows([...baseRows,{name:bName,pct:b.defaultPct,grams:+(b.defaultPct/100*batchSize).toFixed(3),drops:0,mode:"grams"}]);
+    }
   };
   const updBase=(i,field,value)=>{
     const n=[...baseRows];
-    if(field==="pct"){const p=parseFloat(value)||0;n[i]={...n[i],pct:p,grams:+(p/100*batchSize).toFixed(3)};}
-    else if(field==="grams"){const g=parseFloat(value)||0;n[i]={...n[i],grams:g,pct:+(g/batchSize*100).toFixed(3)};}
+    if(field==="pct"){const p=parseFloat(value)||0;n[i]={...n[i],pct:p,grams:+(p/100*batchSize).toFixed(3),drops:Math.round(p/100*batchSize/DROP_ML)};}
+    else if(field==="grams"||field==="ml"){const g=parseFloat(value)||0;n[i]={...n[i],grams:g,pct:+(g/batchSize*100).toFixed(3),drops:Math.round(g/DROP_ML)};}
+    else if(field==="drops"){const d=parseInt(value)||0;const ml=d*DROP_ML;n[i]={...n[i],drops:d,grams:+ml.toFixed(3),pct:+(ml/batchSize*100).toFixed(3)};}
     else if(field==="mode"){n[i]={...n[i],mode:value};}
     setBaseRows(n);
   };
@@ -594,12 +603,14 @@ function Builder({recipes,save,goRecipes}) {
         <span style={{fontWeight:600,fontSize:14}}>Base Ingredients</span>
         <span style={{fontSize:11,color:totalBasePct>100?danger:totalBasePct>0?gold:textMuted}}>Base total: {totalBasePct.toFixed(1)}%</span>
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:4,flexWrap:"wrap"}}>
-        <input value={baseSearch||""} onChange={e=>setBaseSearch(e.target.value)} placeholder="Search base ingredient..." style={{...inp,flex:"1 1 180px"}}/>
-        <select onChange={e=>{if(e.target.value)addBase(e.target.value);e.target.value="";setBaseSearch("");}} style={{...inp,flex:"1 1 220px"}} defaultValue="">
-          <option value="" disabled>+ Add base ingredient...</option>
-          {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>!baseSearch||b.name.toLowerCase().includes(baseSearch.toLowerCase())||b.role.toLowerCase().includes(baseSearch.toLowerCase())).map(b=><option key={b.name} value={b.name}>{b.name} ({b.role}) — max {b.maxPct}%</option>)}
-        </select>
+      <div style={{position:"relative",marginBottom:4}}>
+        <input value={baseSearch||""} onChange={e=>setBaseSearch(e.target.value)} onFocus={()=>setBaseSearch(baseSearch||"")} placeholder="+ Search and add base ingredient..." style={{...inp,width:"100%"}}/>
+        {baseSearch!==null&&baseSearch!==""&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
+          {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>b.name.toLowerCase().includes((baseSearch||"").toLowerCase())||b.role.toLowerCase().includes((baseSearch||"").toLowerCase())||b.inci.toLowerCase().includes((baseSearch||"").toLowerCase())).map(b=><div key={b.name} onClick={()=>{addBase(b.name);setBaseSearch("");}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <span style={{fontWeight:600}}>{b.name}</span> <span style={{color:textMuted,fontSize:10}}>({b.role}) — max {b.maxPct}%</span>
+          </div>)}
+          {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>b.name.toLowerCase().includes((baseSearch||"").toLowerCase())||b.role.toLowerCase().includes((baseSearch||"").toLowerCase())).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No matches found</div>}
+        </div>}
       </div>
       {baseRows.map((r,i)=>{
         const b=BASES.find(x=>x.name===r.name);
@@ -611,16 +622,18 @@ function Builder({recipes,save,goRecipes}) {
             <div style={{fontSize:10,color:textMuted}}>{b?.inci} · {b?.role} · max {b?.maxPct}%</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <select value={r.mode||"pct"} onChange={e=>updBase(i,"mode",e.target.value)} style={{...inp,width:55,fontSize:10,padding:4}}>
-              <option value="pct">%</option><option value="grams">{batchUnit}</option>
+            <select value={r.mode||"grams"} onChange={e=>updBase(i,"mode",e.target.value)} style={{...inp,width:55,fontSize:10,padding:4}}>
+              <option value="grams">g</option><option value="ml">ml</option><option value="pct">%</option><option value="drops">Drops</option>
             </select>
-            {(r.mode||"pct")==="pct"
+            {(r.mode==="pct")
               ?<input type="number" min="0" step="0.1" value={r.pct} onChange={e=>updBase(i,"pct",e.target.value)} style={{...inp,width:65,textAlign:"center"}}/>
+              :(r.mode==="drops")
+              ?<input type="number" min="0" step="1" value={r.drops||0} onChange={e=>updBase(i,"drops",e.target.value)} style={{...inp,width:55,textAlign:"center"}}/>
               :<input type="number" min="0" step="0.01" value={r.grams||+(r.pct/100*batchSize).toFixed(3)} onChange={e=>updBase(i,"grams",e.target.value)} style={{...inp,width:70,textAlign:"center"}}/>
             }
           </div>
-          <div style={{fontSize:11,color:textMuted,minWidth:100}}>
-            {(r.mode||"pct")==="pct" ? `= ${grams.toFixed(2)} ${batchUnit}` : `= ${r.pct.toFixed(2)}%`}
+          <div style={{fontSize:11,color:textMuted,minWidth:120}}>
+            {r.mode==="pct" ? `= ${grams.toFixed(2)}g` : r.mode==="drops" ? `= ${(r.grams||0).toFixed(2)}ml = ${r.pct?.toFixed(2)||0}%` : `= ${r.pct?.toFixed(2)||0}%`}
           </div>
           {overMax&&<span style={{fontSize:10,color:warn,fontWeight:600}}>⚠️ Over max</span>}
           <button onClick={()=>rmBase(i)} style={{background:"none",border:"none",color:danger,cursor:"pointer",fontSize:14,padding:"0 4px"}}>×</button>
@@ -633,15 +646,17 @@ function Builder({recipes,save,goRecipes}) {
         <span style={{fontWeight:600,fontSize:14}}>Scent Blend</span>
         <span style={{fontSize:11,color:hasIFRAWarn?danger:totalScentPct>0?gold:textMuted}}>Scent total: {totalScentPct.toFixed(3)}% ({totalScentMl.toFixed(3)} ml)</span>
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:4,flexWrap:"wrap"}}>
-        <input value={scentSearch||""} onChange={e=>setScentSearch(e.target.value)} placeholder="Search scent..." style={{...inp,flex:"1 1 180px"}}/>
-        <select onChange={e=>{if(e.target.value)addScent(e.target.value);e.target.value="";setScentSearch("");}} style={{...inp,flex:"1 1 220px"}} defaultValue="">
-          <option value="" disabled>+ Add scent...</option>
-          {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).filter(s=>!scentSearch||s.name.toLowerCase().includes(scentSearch.toLowerCase())||s.family.toLowerCase().includes(scentSearch.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{
+      <div style={{position:"relative",marginBottom:4}}>
+        <input value={scentSearch||""} onChange={e=>setScentSearch(e.target.value)} onFocus={()=>setScentSearch(scentSearch||"")} placeholder="+ Search and add scent..." style={{...inp,width:"100%"}}/>
+        {scentSearch!==null&&scentSearch!==""&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
+          {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).filter(s=>s.name.toLowerCase().includes((scentSearch||"").toLowerCase())||s.family.toLowerCase().includes((scentSearch||"").toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{
             const mx=s.ifra[cat]||0;
-            return <option key={s.name} value={s.name} style={{color:mx===0?danger:undefined}}>{s.name} ({s.type}) — max {mx===0?"⛔ BANNED":mx+"% in Cat "+cat}</option>;
+            return <div key={s.name} onClick={()=>{addScent(s.name);setScentSearch("");}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`,color:mx===0?danger:textMain}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <span style={{fontWeight:600}}>{s.name}</span> <TypeBadge t={s.type}/> <span style={{color:textMuted,fontSize:10}}>— max {mx===0?"⛔ BANNED":mx+"% Cat "+cat}</span>
+            </div>;
           })}
-        </select>
+          {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).filter(s=>s.name.toLowerCase().includes((scentSearch||"").toLowerCase())||s.family.toLowerCase().includes((scentSearch||"").toLowerCase())).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No matches found</div>}
+        </div>}
       </div>
       {compScents.map((s,i)=><div key={s.name} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",padding:"6px 0",borderTop:i>0?`1px solid ${border}30`:"none"}}>
         <div style={{flex:"1 1 160px",minWidth:110}}>
@@ -701,13 +716,13 @@ function Recipes({recipes,save,goBuilder}) {
   const del=(id)=>save(recipes.filter(r=>r.id!==id));
   if(recipes.length===0)return <div style={{textAlign:"center",padding:"50px 20px"}}>
     <div style={{fontSize:44,marginBottom:12}}>📋</div>
-    <h3 style={{fontFamily:"'Odibee Sans',cursive",color:gold}}>No Saved Recipes</h3>
+    <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Saved Recipes</h3>
     <p style={{color:textMuted,fontSize:13}}>Build your first formulation in the Recipe Builder.</p>
     <button onClick={goBuilder} style={{...btn,background:gold,color:bg,fontWeight:600,padding:"10px 24px",marginTop:10}}>Open Recipe Builder</button>
   </div>;
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Saved Recipes</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Stored persistently. Click "PIF Data" to generate documentation for YouWish submission.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Click a recipe to view summary and download product specification.</p>
     {recipes.map(r=>{
       const isOpen=expanded===r.id;
       const isPif=pifView===r.id;
@@ -729,7 +744,7 @@ function Recipes({recipes,save,goBuilder}) {
           {r.bases?.length>0&&<><div style={{fontSize:11,color:gold,fontWeight:600,marginBottom:4}}>Base Ingredients ({r.totalBasePct}%)</div>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,marginBottom:8}}>
             <thead><tr style={{borderBottom:`1px solid ${border}`}}>
-              {["Ingredient","INCI","Role","%",batchUnit].map(h=><th key={h} style={{padding:"3px 6px",textAlign:"left",color:textDim,fontSize:9,textTransform:"uppercase"}}>{h}</th>)}
+              {["Ingredient","INCI","Role","%",r.batchUnit||"g"].map(h=><th key={h} style={{padding:"3px 6px",textAlign:"left",color:textDim,fontSize:9,textTransform:"uppercase"}}>{h}</th>)}
             </tr></thead>
             <tbody>{r.bases.map((b,i)=><tr key={i} style={{borderBottom:`1px solid ${border}30`}}>
               <td style={{padding:"3px 6px"}}>{b.name}</td>
@@ -769,11 +784,11 @@ function Recipes({recipes,save,goBuilder}) {
           {/* -- PIF DATA EXPORT -- */}
           {isPif&&<div style={{marginTop:12,padding:"12px 14px",borderRadius:8,background:`${bg}ee`,border:`1px solid ${gold}30`}}>
             <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:14,marginBottom:8}}>📄 PIF / CPNP Data Package</div>
-            <p style={{fontSize:11,color:textMain,marginBottom:10}}>Below is the data YouWish needs from you to prepare your PIF and CPSR. Copy this or use as your submission brief.</p>
+            <p style={{fontSize:11,color:textMain,marginBottom:10}}>Below is the data your safety assessor needs to prepare your PIF and CPSR. Copy this or use as your submission brief.</p>
             <div id={`pif-${r.id}`} style={{background:bgInput,borderRadius:6,padding:12,fontSize:11,lineHeight:1.7,color:textMain,whiteSpace:"pre-wrap",fontFamily:"'Courier New',monospace",border:`1px solid ${border}`,maxHeight:400,overflowY:"auto"}}>
 {`=======================================
 PRODUCT INFORMATION — ${r.name}
-For: YouWish PIF & CPSR Submission
+For: PIF & CPSR Submission
 Brand: Boegbeeld (www.boegbeeld.shop)
 Generated: ${new Date().toLocaleDateString("nl-NL")}
 =======================================
@@ -801,18 +816,18 @@ ${r.scents?.map(s=>`• ${s.name.padEnd(35)} ${s.pct?.toFixed(3).padStart(7)}% o
 [ ] CoA (Certificate of Analysis) per ingredient
 [ ] MSDS/SDS per ingredient
 [ ] TDS (Technical Data Sheet) per ingredient
-[ ] IFRA Certificate per fragrance oil (download from YouWish)
-[ ] Allergen declaration per fragrance (from YouWish IFRA cert)
+[ ] IFRA Certificate per fragrance oil (from supplier)
+[ ] Allergen declaration per fragrance (from IFRA cert)
 [ ] GMP statement or ISO 22716 compliance
 [ ] Manufacturing method description
 [ ] Packaging specification (material, volume)
 [ ] Label draft (with INCI list, batch no., PAO symbol)
-[ ] Stability test samples (YouWish arranges lab)
+[ ] Stability test samples (safety assessor arranges lab)
 5. INCI LIST (for label — descending order)
 ----------------------------------------
 ${[...(r.bases||[]).sort((a,b)=>b.pct-a.pct).map(b=>b.inci),"Parfum"].filter((v,i,a)=>a.indexOf(v)===i).join(", ")}
 Note: Allergens from fragrance (>0.001% rinse-off, >0.01% leave-on)
-must be listed after "Parfum". YouWish IFRA certificates list these.
+must be listed after "Parfum". Check supplier IFRA certificates for these.
 6. WHAT YOUWISH HANDLES
 ----------------------
 [x] CPSR (Cosmetic Product Safety Report Part A + B)
@@ -826,7 +841,7 @@ must be listed after "Parfum". YouWish IFRA certificates list these.
 -----------------------------
 -> Final formula (this document)
 -> Ingredient documentation (CoA, SDS, TDS per ingredient)
-   Tip: YouWish provides these for ingredients bought from them
+   Tip: Your supplier may provide these for ingredients bought from them
 -> Packaging details + label mockup
 -> Physical product samples for stability testing
 -> GMP compliance (ISO 22716 or equivalent statement)
@@ -904,10 +919,10 @@ function Production({recipes}) {
   ];
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Production Scale-Up</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a saved recipe and scale it to any production quantity. All amounts recalculate automatically.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a saved recipe and scale it to any production quantity.</p>
     {recipes.length===0&&<div style={{textAlign:"center",padding:"50px 20px"}}>
       <div style={{fontSize:44,marginBottom:12}}>🏭</div>
-      <h3 style={{fontFamily:"'Odibee Sans',cursive",color:gold}}>No Recipes to Produce</h3>
+      <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Recipes to Produce</h3>
       <p style={{color:textMuted,fontSize:13}}>Create and save a recipe in the Recipe Builder first.</p>
     </div>}
     {recipes.length>0&&<>
@@ -1212,7 +1227,7 @@ function CostCalc({recipes}) {
       </div>
     </>}
     {!recipe&&recipes.length>0&&<div style={{...card,marginTop:12,background:bgInput,border:`1px solid ${gold}20`}}>
-      <div style={{fontSize:12,color:textMuted}}>💡 Select a recipe above to see cost breakdown. Prices are pre-filled with YouWish estimates (FO: €29.50/100ml, EO: €25/100ml, Carrier oils: €8/100ml). Edit directly in the table or in the Scents/Base tabs.</div>
+      <div style={{fontSize:12,color:textMuted}}>💡 Select a recipe above to see cost breakdown. Prices loaded from Google Sheet (FO: €29.50/100ml, EO: €25/100ml, Carrier oils: €8/100ml). Edit directly in the table or in the Scents/Base tabs.</div>
     </div>}
   </div>;
 }
@@ -1223,14 +1238,15 @@ function Packaging() {
   const filtered = cf==="all"?items:items.filter(i=>i.category===cf);
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Packaging</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Packaging items loaded from Google Sheet. Add new items there.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Packaging items loaded from your Google Sheet.</p>
     <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
       <select value={cf} onChange={e=>setCf(e.target.value)} style={{...inp,width:160}}><option value="all">All Categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select>
       <a href={SHEETS_CONFIG.editPackaging} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none"}}>+ Add in Google Sheet</a>
     </div>
     {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}>
       <div style={{fontSize:40,marginBottom:8}}>📦</div>
-      <p style={{color:textMuted,fontSize:13}}>No packaging items yet. Add a "packaging" tab in your Google Sheet with columns: name, description, category, price_eur, per_unit, for_product, url, notes</p>
+      <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Packaging Items</h3>
+      <p style={{color:textMuted,fontSize:13,marginTop:4}}>Add a "packaging" tab in your Google Sheet with columns: name, description, category, price_eur, per_unit, for_product, url, notes</p>
     </div>}
     {filtered.length>0&&<div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
