@@ -1223,8 +1223,8 @@ function CostCalc({recipes}) {
     try{const r=await store.get("bb-base-overrides");if(r?.value)setBaseOv(JSON.parse(r.value));}catch(e){}
   })();},[]);
   const getPrice=(name,isScent)=>{
-    if(isScent){const ov=scentOv[name];if(ov?.pricePer100ml)return ov.pricePer100ml;const s=SCENTS.find(x=>x.name===name);return s?.type==="FO"?29.50:s?.type==="CO2"?45.00:25.00;}
-    else{const ov=baseOv[name];if(ov?.pricePer100)return ov.pricePer100;const b=BASES.find(x=>x.name===name);return b?.role==="carrier"?8.00:b?.role==="wax"?12.00:b?.role==="solvent"?2.00:10.00;}
+    if(isScent){const ov=scentOv[name];if(ov?.pricePer100ml)return ov.pricePer100ml;const s=SCENTS.find(x=>x.name===name);return s?.pricePer100ml||(s?.type==="FO"?29.50:s?.type==="CO2"?45.00:25.00);}
+    else{const ov=baseOv[name];if(ov?.pricePer100)return ov.pricePer100;const b=BASES.find(x=>x.name===name);return b?.pricePer100||(b?.role==="carrier"?8.00:b?.role==="wax"?12.00:b?.role==="solvent"?2.00:10.00);}
   };
   const recipe=recipes.find(r=>r.id===+selId);
   const cSz=parseFloat(containerSz)||30;
