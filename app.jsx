@@ -333,6 +333,8 @@ function Dashboard({recipes,setTab}) {
   const verifiedScents=SCENTS.filter(s=>s.ifraSource==="verified").length;
   const urlVerifiedScents=SCENTS.filter(s=>s.ifraSource==="url_verified").length;
   const estimatedScents=SCENTS.length-verifiedScents-urlVerifiedScents;
+  const basesWithPrice=BASES.filter(b=>b.pricePer100&&b.pricePer100>0).length;
+  const basesWithUrl=BASES.filter(b=>b.url&&b.url.includes("youwish.nl/en/shop")).length;
   const latestProduct=recipes.length>0?recipes[recipes.length-1]:null;
 
   const statCard=(icon,label,value,sub,onClick)=>(
@@ -374,18 +376,29 @@ function Dashboard({recipes,setTab}) {
 
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12,marginBottom:20}}>
       <div style={card}>
-        <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:8,letterSpacing:1}}>VERIFICATION STATUS</div>
+        <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:8,letterSpacing:1}}>SCENT VERIFICATION ({SCENTS.length} total)</div>
         <div style={{marginBottom:6}}>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>IFRA Verified</span><span style={{color:ok,fontWeight:600}}>{verifiedScents}</span></div>
           <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:ok,width:`${SCENTS.length>0?verifiedScents/SCENTS.length*100:0}%`}}/></div>
         </div>
         <div style={{marginBottom:6}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>URL Confirmed</span><span style={{color:gold,fontWeight:600}}>{urlVerifiedScents}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>URL Confirmed (IFRA needs check)</span><span style={{color:gold,fontWeight:600}}>{urlVerifiedScents}</span></div>
           <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:gold,width:`${SCENTS.length>0?urlVerifiedScents/SCENTS.length*100:0}%`}}/></div>
         </div>
         <div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>Needs Checking</span><span style={{color:warn,fontWeight:600}}>{estimatedScents}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>Unverified (URL + IFRA need check)</span><span style={{color:warn,fontWeight:600}}>{estimatedScents}</span></div>
           <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:warn,width:`${SCENTS.length>0?estimatedScents/SCENTS.length*100:0}%`}}/></div>
+        </div>
+        <div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${border}30`}}>
+          <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:13,marginBottom:6,letterSpacing:1}}>BASE INGREDIENTS ({BASES.length} total)</div>
+          <div style={{marginBottom:4}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>With price data</span><span style={{color:ok,fontWeight:600}}>{basesWithPrice} / {BASES.length}</span></div>
+            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:ok,width:`${BASES.length>0?basesWithPrice/BASES.length*100:0}%`}}/></div>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>With direct product URL</span><span style={{color:gold,fontWeight:600}}>{basesWithUrl} / {BASES.length}</span></div>
+            <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:gold,width:`${BASES.length>0?basesWithUrl/BASES.length*100:0}%`}}/></div>
+          </div>
         </div>
       </div>
 
@@ -1288,13 +1301,23 @@ function Production({recipes}) {
             })}
           </div>
         </div>
-        {/* Print / Copy */}
-        <div style={{display:"flex",gap:8,marginTop:4}}>
-          <button onClick={()=>window.print()} style={{...btn,background:bgCard,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>🖨️ Print Production Sheet</button>
+        {/* Save / Export */}
+        <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
+          <button onClick={()=>{
+            const rows=[["PRODUCTION SHEET — "+recipe.name],["Date: "+new Date().toLocaleDateString("nl-NL")],["Product: "+recipe.productName+" · IFRA Cat "+recipe.category],["Target: "+target+" "+targetUnit+" ("+scaleFactor.toFixed(1)+"× from "+origSize+origUnit+")"],["Containers: "+(numContainers>0?"~"+numContainers+" × "+containerSize+containerUnit:"N/A")],[""],["BASE INGREDIENTS","INCI","%","Amount"]];
+            (recipe.bases||[]).forEach(b=>{const s=(b.pct/100)*targetInOrigUnit;rows.push([b.name,b.inci,b.pct+"%",s.toFixed(2)+" "+origUnit]);});
+            rows.push([""],["SCENT BLEND","Type","%","Amount (ml)"]);
+            (recipe.scents||[]).forEach(s=>{const m=(s.pct/100)*targetInOrigUnit;rows.push([s.name,s.type,s.pct+"%",m.toFixed(2)+" ml"]);});
+            rows.push([""],["Total fragrance","",recipe.totalScentPct+"%",((recipe.totalScentPct/100)*targetInOrigUnit).toFixed(2)+" "+origUnit]);
+            const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});
+            const url=URL.createObjectURL(blob);const a=document.createElement("a");
+            a.href=url;a.download=`production-${recipe.name.replace(/\s+/g,"-")}-${target}${targetUnit}-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
+          }} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📥 Export CSV</button>
           <button onClick={()=>{
             const lines=[`PRODUCTION SHEET — ${recipe.name}`,`${target} ${targetUnit} (${scaleFactor.toFixed(1)}× from ${origSize}${origUnit})`,`Date: ${new Date().toLocaleDateString("nl-NL")}`,`Product: ${recipe.productName} · IFRA Cat ${recipe.category}`,``,`BASE INGREDIENTS:`,...(recipe.bases||[]).map(b=>{const s=(b.pct/100)*targetInOrigUnit;return `  ${b.name.padEnd(35)} ${b.pct}%   ${s>=1000?(s/1000).toFixed(2)+(origUnit==="g"?" kg":" L"):s.toFixed(2)+" "+origUnit}`;}),``,`SCENT BLEND:`,...(recipe.scents||[]).map(s=>{const m=(s.pct/100)*targetInOrigUnit;return `  ${s.name.padEnd(35)} ${s.pct}%   ${m.toFixed(2)} ml`;}),``,`Total fragrance: ${((recipe.totalScentPct/100)*targetInOrigUnit).toFixed(2)} ${origUnit} (${recipe.totalScentPct}%)`,numContainers>0?`Containers: ~${numContainers} × ${containerSize}${containerUnit}`:""];
             navigator.clipboard.writeText(lines.join("\n")).then(()=>alert("Production sheet copied!"));
-          }} style={{...btn,background:bgCard,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📋 Copy Production Sheet</button>
+          }} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📋 Copy for Sheet</button>
+          <button onClick={()=>window.print()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>🖨️ Print</button>
         </div>
       </>}
     </>}
