@@ -48,6 +48,7 @@ function rowToScent(r) {
     note: r.note || "",
     profile: r.profile || "",
     masculine: parseInt(r.masculine) || 3,
+    inci: r.inci || "",
     ifra: {
       "2": parseFloat(r.ifra_2) || 0,
       "4": parseFloat(r.ifra_4) || 0,
@@ -493,7 +494,7 @@ function Builder({ recipes, save, goRecipes, editingProduct, clearEdit }) {
         const b = BASES.find((x) => x.name === r.name);
         return { ...r, inci: b?.inci || "", role: b?.role || "" };
       }),
-      scents: compScentsWithPct.map((s) => ({ name: s.name, type: s.sd?.type || "FO", drops: s.drops, ml: +s.ml.toFixed(4), pct: +s.pct, maxPct: s.maxPct, inci: s.sd?.type === "FO" ? "Parfum" : s.sd?.name || "Parfum" })),
+      scents: compScentsWithPct.map((s) => ({ name: s.name, type: s.sd?.type || "FO", drops: s.drops, ml: +s.ml.toFixed(4), pct: +s.pct, maxPct: s.maxPct, inci: s.sd?.type === "FO" ? "Parfum" : s.sd?.inci || "Parfum" })),
       totalBasePct,
       totalScentPct: +totalScentPct,
       totalPct: 100,
@@ -560,6 +561,91 @@ function Builder({ recipes, save, goRecipes, editingProduct, clearEdit }) {
 function Recipes({ recipes, save, goBuilder, onEdit }) {
   const [expanded, setExpanded] = useState(null);
   const [pifView, setPifView] = useState(null);
+  const fileRef = useRef(null);
+  const importCSV = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target.result;
+        try {
+          const imported = JSON.parse(text);
+          if (Array.isArray(imported)) {
+            const merged = [...recipes];
+            imported.forEach((r) => {
+              if (!merged.find((x) => x.id === r.id)) merged.push({ ...r, id: r.id || Date.now() + Math.random() });
+            });
+            save(merged);
+            alert(`Imported ${imported.length} product(s).`);
+            return;
+          }
+        } catch (e2) {
+        }
+        const rows = parseCSV(text).filter((r) => r.name);
+        if (rows.length === 0) {
+          alert("No data found. CSV needs columns: type, name, inci, role, amount, unit");
+          return;
+        }
+        const bases = [];
+        const scents = [];
+        const pkg = [];
+        const instr = [];
+        let prodName = "Imported Product";
+        let prodType = "pomade";
+        let notes = "";
+        rows.forEach((r) => {
+          const t = (r.type || r.section || "").toLowerCase().trim();
+          if (t === "product" || t === "info") {
+            prodName = r.name || prodName;
+            prodType = r.role || r.product_type || prodType;
+            notes = r.notes || r.amount || notes;
+          } else if (t === "base" || t === "ingredient") {
+            bases.push({ name: r.name, inci: r.inci || "", role: r.role || "carrier", grams: parseFloat(r.amount) || 0, pct: 0, mode: "grams" });
+          } else if (t === "scent" || t === "fragrance") {
+            scents.push({ name: r.name, inci: r.inci || "Parfum", type: r.role || "EO", drops: parseInt(r.amount) || 0, ml: (parseInt(r.amount) || 0) * 0.05, pct: 0 });
+          } else if (t === "packaging" || t === "pack") {
+            pkg.push({ name: r.name, category: r.role || "container", price_eur: parseFloat(r.amount) || 0, per_unit: r.unit || "piece", description: r.inci || "" });
+          } else if (t === "instruction" || t === "step") {
+            instr.push(r.name);
+          }
+        });
+        const totalG = bases.reduce((a, b) => a + b.grams, 0) + scents.reduce((a, s) => a + s.ml, 0);
+        bases.forEach((b) => {
+          b.pct = totalG > 0 ? +(b.grams / totalG * 100).toFixed(2) : 0;
+        });
+        scents.forEach((s) => {
+          s.pct = totalG > 0 ? +(s.ml / totalG * 100).toFixed(3) : 0;
+        });
+        const product = {
+          id: Date.now(),
+          name: prodName,
+          notes,
+          productType: prodType,
+          productName: PRODUCTS[prodType]?.name || prodType,
+          batchSize: +totalG.toFixed(2),
+          batchUnit: "g",
+          category: PRODUCTS[prodType]?.cat || "7B",
+          bases,
+          scents,
+          packaging: pkg,
+          instructions: instr,
+          totalBasePct: +bases.reduce((a, b) => a + b.pct, 0).toFixed(2),
+          totalScentPct: +scents.reduce((a, s) => a + s.pct, 0).toFixed(3),
+          totalPct: 100,
+          totalScentMl: +scents.reduce((a, s) => a + s.ml, 0).toFixed(3),
+          createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+          hasWarnings: false
+        };
+        save([...recipes, product]);
+        alert(`Imported "${prodName}" with ${bases.length} bases, ${scents.length} scents, ${pkg.length} packaging, ${instr.length} instructions.`);
+      } catch (err) {
+        alert("Error importing: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
   const del = (id) => save(recipes.filter((r) => r.id !== id));
   const exportAll = () => {
     const rows = [];
@@ -601,11 +687,11 @@ function Recipes({ recipes, save, goBuilder, onEdit }) {
     rows.push("");
     rows.push(["TOTAL", "", " ", " ", r.totalPct + "%"].join("	"));
     rows.push("");
-    rows.push(["INCI LIST", ...(r.bases || []).sort((a, b) => b.pct - a.pct).map((b) => b.inci), "Parfum"].join(", "));
+    rows.push(["INCI LIST", ...[...(r.bases || []).sort((a, b) => b.pct - a.pct).map((b) => b.inci), ...(r.scents || []).sort((a, b) => (b.pct || 0) - (a.pct || 0)).map((s) => s.inci || "Parfum")].filter((v, i, a) => v && a.indexOf(v) === i)].join(", "));
     navigator.clipboard.writeText(rows.join("\n")).then(() => alert("Product copied! Paste into Google Sheets."));
   };
-  if (recipes.length === 0) return /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "50px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 44, marginBottom: 12 } }, "\u{1F4CB}"), /* @__PURE__ */ React.createElement("h3", { style: { fontFamily: "'Open Sans',sans-serif", color: gold, fontWeight: 700 } }, "No Saved Products"), /* @__PURE__ */ React.createElement("p", { style: { color: textMuted, fontSize: 13 } }, "Build your first formulation in the Product Builder."), /* @__PURE__ */ React.createElement("button", { onClick: goBuilder, style: { ...btn, background: gold, color: bg, fontWeight: 600, padding: "10px 24px", marginTop: 10 } }, "Open Product Builder"));
-  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h2", { style: { fontFamily: "'Odibee Sans',cursive", color: gold, fontSize: 20, margin: "0 0 4px", letterSpacing: 3, textTransform: "uppercase" } }, "Saved Products"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("p", { style: { color: textMuted, fontSize: 12, margin: 0 } }, "Click a recipe to view summary and download product specification."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("button", { onClick: exportAll, style: { ...btn, background: bgInput, color: gold, border: `1px solid ${gold}40`, fontSize: 10 } }, "\u{1F4E5} Export CSV"))), recipes.map((r) => {
+  if (recipes.length === 0) return /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "50px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 44, marginBottom: 12 } }, "\u{1F4CB}"), /* @__PURE__ */ React.createElement("h3", { style: { fontFamily: "'Open Sans',sans-serif", color: gold, fontWeight: 700 } }, "No Saved Products"), /* @__PURE__ */ React.createElement("p", { style: { color: textMuted, fontSize: 13 } }, "Build your first formulation in the Product Builder."), /* @__PURE__ */ React.createElement("button", { onClick: goBuilder, style: { ...btn, background: gold, color: bg, fontWeight: 600, padding: "10px 24px", marginTop: 10 } }, "Open Product Builder"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => fileRef.current?.click(), style: { ...btn, background: bgInput, color: gold, border: `1px solid ${gold}40`, fontSize: 11 } }, "\u{1F4E4} Import Product from CSV"), /* @__PURE__ */ React.createElement("input", { ref: fileRef, type: "file", accept: ".csv,.json", onChange: importCSV, style: { display: "none" } })));
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h2", { style: { fontFamily: "'Odibee Sans',cursive", color: gold, fontSize: 20, margin: "0 0 4px", letterSpacing: 3, textTransform: "uppercase" } }, "Saved Products"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("p", { style: { color: textMuted, fontSize: 12, margin: 0 } }, "Click a recipe to view summary and download product specification."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("button", { onClick: exportAll, style: { ...btn, background: bgInput, color: gold, border: `1px solid ${gold}40`, fontSize: 10 } }, "\u{1F4E5} Export CSV"), /* @__PURE__ */ React.createElement("button", { onClick: () => fileRef.current?.click(), style: { ...btn, background: bgInput, color: gold, border: `1px solid ${gold}40`, fontSize: 10 } }, "\u{1F4E4} Import CSV"), /* @__PURE__ */ React.createElement("input", { ref: fileRef, type: "file", accept: ".csv,.json", onChange: importCSV, style: { display: "none" } }))), recipes.map((r) => {
     const isOpen = expanded === r.id;
     const isPif = pifView === r.id;
     return /* @__PURE__ */ React.createElement("div", { key: r.id, style: { ...card, border: isOpen ? `1px solid ${gold}40` : `1px solid ${border}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "start", cursor: "pointer" }, onClick: () => setExpanded(isOpen ? null : r.id) }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { style: { fontFamily: "'Open Sans',sans-serif", color: gold, fontSize: 15, margin: "0 0 3px", fontWeight: 700 } }, r.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMuted } }, r.productName, " \u2022 Cat ", r.category, " \u2022 ", r.batchSize, r.batchUnit, " \u2022 ", new Date(r.createdAt).toLocaleDateString("nl-NL"), r.hasWarnings && /* @__PURE__ */ React.createElement("span", { style: { color: warn, marginLeft: 6 } }, "\u26A0\uFE0F has warnings"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
@@ -617,7 +703,7 @@ function Recipes({ recipes, save, goBuilder, onEdit }) {
     }, style: { ...btn, background: bgInput, color: gold, border: `1px solid ${gold}30`, fontSize: 10 } }, "\u{1F4CB} Copy for Sheet"), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
       e.stopPropagation();
       del(r.id);
-    }, style: { ...btn, background: bgInput, color: danger, border: `1px solid ${danger}30`, fontSize: 10 } }, "Delete"))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, r.bases?.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: gold, fontWeight: 600, marginBottom: 4 } }, "Base Ingredients (", r.totalBasePct, "%)"), /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { borderBottom: `1px solid ${border}` } }, ["Ingredient", "INCI", "Role", "%", r.batchUnit || "g"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: { padding: "3px 6px", textAlign: "left", color: textDim, fontSize: 9, textTransform: "uppercase" } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, r.bases.map((b, i) => /* @__PURE__ */ React.createElement("tr", { key: i, style: { borderBottom: `1px solid ${border}30` } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px" } }, b.name), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted, fontSize: 10 } }, b.inci), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, b.role), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: gold, fontWeight: 600 } }, b.pct, "%"), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, (b.pct / 100 * r.batchSize).toFixed(2))))))), r.scents?.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: gold, fontWeight: 600, marginBottom: 4 } }, "Scent Blend (", r.totalScentPct, "%)"), /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { borderBottom: `1px solid ${border}` } }, ["Scent", "Type", "Drops", "ml", "%", "Max %"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: { padding: "3px 6px", textAlign: "left", color: textDim, fontSize: 9, textTransform: "uppercase" } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, r.scents.map((s, i) => /* @__PURE__ */ React.createElement("tr", { key: i, style: { borderBottom: `1px solid ${border}30` } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px" } }, s.name), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px" } }, /* @__PURE__ */ React.createElement(TypeBadge, { t: s.type })), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, s.drops), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, s.ml?.toFixed(3)), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: gold, fontWeight: 600 } }, s.pct?.toFixed(3), "%"), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, s.maxPct, "%")))))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMuted, paddingTop: 4, borderTop: `1px solid ${border}30` } }, "Total: ", /* @__PURE__ */ React.createElement("strong", { style: { color: gold } }, r.totalPct, "%"), " \u2022 Scent: ", r.totalScentMl, "ml"), r.notes && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMuted, marginTop: 4, fontStyle: "italic" } }, "Notes: ", r.notes), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, padding: "8px 12px", borderRadius: 6, background: bgInput, border: `1px solid ${border}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: gold, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 } }, "INCI Ingredients (for label)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMain, lineHeight: 1.6 } }, [...(r.bases || []).sort((a, b) => b.pct - a.pct).map((b) => b.inci), "Parfum"].filter((v, i, a) => a.indexOf(v) === i).join(", ")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: textDim, marginTop: 4 } }, "Note: Allergens from fragrance (", ">", " 0.01% leave-on / ", ">", ' 0.001% rinse-off) must be listed after "Parfum". Check IFRA certificates.')), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
+    }, style: { ...btn, background: bgInput, color: danger, border: `1px solid ${danger}30`, fontSize: 10 } }, "Delete"))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, r.bases?.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: gold, fontWeight: 600, marginBottom: 4 } }, "Base Ingredients (", r.totalBasePct, "%)"), /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { borderBottom: `1px solid ${border}` } }, ["Ingredient", "INCI", "Role", "%", r.batchUnit || "g"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: { padding: "3px 6px", textAlign: "left", color: textDim, fontSize: 9, textTransform: "uppercase" } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, r.bases.map((b, i) => /* @__PURE__ */ React.createElement("tr", { key: i, style: { borderBottom: `1px solid ${border}30` } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px" } }, b.name), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted, fontSize: 10 } }, b.inci), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, b.role), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: gold, fontWeight: 600 } }, b.pct, "%"), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, (b.pct / 100 * r.batchSize).toFixed(2))))))), r.scents?.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: gold, fontWeight: 600, marginBottom: 4 } }, "Scent Blend (", r.totalScentPct, "%)"), /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 11, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { borderBottom: `1px solid ${border}` } }, ["Scent", "Type", "Drops", "ml", "%", "Max %"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: { padding: "3px 6px", textAlign: "left", color: textDim, fontSize: 9, textTransform: "uppercase" } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, r.scents.map((s, i) => /* @__PURE__ */ React.createElement("tr", { key: i, style: { borderBottom: `1px solid ${border}30` } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px" } }, s.name), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px" } }, /* @__PURE__ */ React.createElement(TypeBadge, { t: s.type })), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, s.drops), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, s.ml?.toFixed(3)), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: gold, fontWeight: 600 } }, s.pct?.toFixed(3), "%"), /* @__PURE__ */ React.createElement("td", { style: { padding: "3px 6px", color: textMuted } }, s.maxPct, "%")))))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMuted, paddingTop: 4, borderTop: `1px solid ${border}30` } }, "Total: ", /* @__PURE__ */ React.createElement("strong", { style: { color: gold } }, r.totalPct, "%"), " \u2022 Scent: ", r.totalScentMl, "ml"), r.notes && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMuted, marginTop: 4, fontStyle: "italic" } }, "Notes: ", r.notes), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, padding: "8px 12px", borderRadius: 6, background: bgInput, border: `1px solid ${border}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: gold, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 } }, "INCI Ingredients (for label)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: textMain, lineHeight: 1.6 } }, [...(r.bases || []).sort((a, b) => b.pct - a.pct).map((b) => b.inci), ...(r.scents || []).sort((a, b) => (b.pct || 0) - (a.pct || 0)).map((s) => s.inci || "Parfum")].filter((v, i, a) => v && a.indexOf(v) === i).join(", ")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: textDim, marginTop: 4 } }, "Note: Allergens from fragrance (", ">", " 0.01% leave-on / ", ">", ' 0.001% rinse-off) must be listed after "Parfum". Check IFRA certificates.')), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
       e.stopPropagation();
       setPifView(isPif ? null : r.id);
     }, style: { ...btn, marginTop: 10, background: isPif ? `${gold}15` : bgInput, color: gold, border: `1px solid ${gold}40`, fontSize: 11, padding: "6px 14px" } }, "\u{1F4C4} ", isPif ? "Hide" : "Download", " Product Specification (PIF Data)"), isPif && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, padding: "12px 14px", borderRadius: 8, background: `${bg}ee`, border: `1px solid ${gold}30` } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Odibee Sans',cursive", color: gold, fontSize: 14, marginBottom: 8 } }, "\u{1F4C4} PIF / CPNP Data Package"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 11, color: textMain, marginBottom: 10 } }, "Below is the data your safety assessor needs to prepare your PIF and CPSR. Copy this or use as your submission brief."), /* @__PURE__ */ React.createElement("div", { id: `pif-${r.id}`, style: { background: bgInput, borderRadius: 6, padding: 12, fontSize: 11, lineHeight: 1.7, color: textMain, whiteSpace: "pre-wrap", fontFamily: "'Courier New',monospace", border: `1px solid ${border}`, maxHeight: 400, overflowY: "auto" } }, `=======================================
@@ -659,7 +745,7 @@ ${r.scents?.map((s) => `\u2022 ${s.name.padEnd(35)} ${s.pct?.toFixed(3).padStart
 [ ] Stability test samples (safety assessor arranges lab)
 5. INCI LIST (for label \u2014 descending order)
 ----------------------------------------
-${[...(r.bases || []).sort((a, b) => b.pct - a.pct).map((b) => b.inci), "Parfum"].filter((v, i, a) => a.indexOf(v) === i).join(", ")}
+${[...(r.bases || []).sort((a, b) => b.pct - a.pct).map((b) => b.inci), ...(r.scents || []).sort((a, b) => (b.pct || 0) - (a.pct || 0)).map((s) => s.inci || "Parfum")].filter((v, i, a) => v && a.indexOf(v) === i).join(", ")}
 Note: Allergens from fragrance (>0.001% rinse-off, >0.01% leave-on)
 must be listed after "Parfum". Check supplier IFRA certificates for these.
 6. WHAT YOUWISH HANDLES
