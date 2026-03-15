@@ -285,7 +285,7 @@ const Warn = ({children}) => <div style={{padding:"8px 12px",borderRadius:8,back
 const Ok = ({children}) => <div style={{padding:"8px 12px",borderRadius:8,background:"#152a18",border:`1px solid ${ok}40`,fontSize:12,color:"#a0d0a0",marginTop:8,fontFamily:"'Open Sans',sans-serif"}}>{children}</div>;
 const Pill = ({color=textMuted,bg:pbg=bgInput,children}) => <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:pbg,color,fontWeight:600,whiteSpace:"nowrap",fontFamily:"'Open Sans',sans-serif"}}>{children}</span>;
 function App() {
-  const [tab, setTab] = useState("library");
+  const [tab, setTab] = useState("dashboard");
   const [recipes, setRecipes] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
   useEffect(() => {
@@ -295,7 +295,7 @@ function App() {
     setRecipes(r);
     try{await store.set("bb-recipes",JSON.stringify(r));}catch(e){console.error(e);}
   },[]);
-  const tabs = [{id:"library",icon:"🧴",label:"Scents"},{id:"ingredients",icon:"🧪",label:"Base"},{id:"packaging",icon:"📦",label:"Packaging"},{id:"builder",icon:"⚗️",label:"Product Builder"},{id:"recipes",icon:"📋",label:"Products"},{id:"production",icon:"🏭",label:"Production"},{id:"costs",icon:"💰",label:"Costs / Profit"}];
+  const tabs = [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"library",icon:"🧴",label:"Scents"},{id:"ingredients",icon:"🧪",label:"Base"},{id:"packaging",icon:"📦",label:"Packaging"},{id:"builder",icon:"⚗️",label:"Product Builder"},{id:"recipes",icon:"📋",label:"Products"},{id:"production",icon:"🏭",label:"Production"},{id:"costs",icon:"💰",label:"Costs / Profit"}];
   return (
     <div style={{fontFamily:"'Open Sans',sans-serif",background:bg,color:textMain,minHeight:"100vh"}}>
       <link href="https://fonts.googleapis.com/css2?family=Odibee+Sans&family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -303,9 +303,9 @@ function App() {
       <div style={{borderBottom:`1px solid ${border}`}}>
         <div style={{maxWidth:1200,margin:"0 auto",padding:"14px 16px 0"}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
-            <div style={{fontFamily:"'Odibee Sans',cursive",fontSize:26,color:"#ffffff",letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>BOEGBEELD</div>
+            <div onClick={()=>setTab("dashboard")} style={{fontFamily:"'Odibee Sans',cursive",fontSize:26,color:"#ffffff",letterSpacing:3,textTransform:"uppercase",lineHeight:1,cursor:"pointer"}}>BOEGBEELD</div>
             <div style={{height:20,width:1,background:border}}/>
-            <div style={{fontFamily:"'Odibee Sans',cursive",fontSize:18,color:gold,letterSpacing:2,textTransform:"uppercase"}}>Creation Lab</div>
+            <div onClick={()=>setTab("dashboard")} style={{fontFamily:"'Odibee Sans',cursive",fontSize:18,color:gold,letterSpacing:2,textTransform:"uppercase",cursor:"pointer"}}>Creation Lab</div>
           </div>
           <div style={{display:"flex",gap:0,overflowX:"auto"}}>
             {tabs.map(t=>(
@@ -317,6 +317,7 @@ function App() {
         </div>
       </div>
       <div style={{maxWidth:1200,margin:"0 auto",padding:"12px 16px 40px"}}>
+        {tab==="dashboard"&&<Dashboard recipes={recipes} setTab={setTab}/>}
         {tab==="library"&&<Library/>}
         {tab==="ingredients"&&<IngredientsLib/>}
         {tab==="packaging"&&<Packaging/>}
@@ -327,6 +328,89 @@ function App() {
       </div>
     </div>
   );
+}
+function Dashboard({recipes,setTab}) {
+  const verifiedScents=SCENTS.filter(s=>s.ifraSource==="verified").length;
+  const urlVerifiedScents=SCENTS.filter(s=>s.ifraSource==="url_verified").length;
+  const estimatedScents=SCENTS.length-verifiedScents-urlVerifiedScents;
+  const latestProduct=recipes.length>0?recipes[recipes.length-1]:null;
+
+  const statCard=(icon,label,value,sub,onClick)=>(
+    <div onClick={onClick} style={{padding:"16px 20px",background:bgCard,borderRadius:10,border:`1px solid ${border}`,cursor:onClick?"pointer":"default",transition:"border .2s"}} onMouseEnter={e=>{if(onClick)e.currentTarget.style.borderColor=gold;}} onMouseLeave={e=>e.currentTarget.style.borderColor=border}>
+      <div style={{fontSize:24,marginBottom:4}}>{icon}</div>
+      <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:28}}>{value}</div>
+      <div style={{color:textMain,fontSize:12,fontWeight:600}}>{label}</div>
+      {sub&&<div style={{color:textMuted,fontSize:10,marginTop:2}}>{sub}</div>}
+    </div>
+  );
+
+  return <div>
+    <div style={{marginBottom:20}}>
+      <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:24,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Dashboard</h2>
+      <p style={{color:textMuted,fontSize:12}}>Overview of your Creation Lab. Click any card to jump to that section.</p>
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:20}}>
+      {statCard("🧴","Scents",SCENTS.length,`${verifiedScents} verified, ${urlVerifiedScents} URL ok, ${estimatedScents} to check`,()=>setTab("library"))}
+      {statCard("🧪","Base Ingredients",BASES.length,"Carrier oils, waxes, actives",()=>setTab("ingredients"))}
+      {statCard("📦","Packaging",PACKAGING_ITEMS.length,PACKAGING_ITEMS.length>0?"Items loaded from Sheet":"Add items in Google Sheet",()=>setTab("packaging"))}
+      {statCard("📋","Products",recipes.length,recipes.length>0?recipes.map(r=>r.name).join(", "):"Build your first product",()=>setTab(recipes.length>0?"recipes":"builder"))}
+    </div>
+
+    {latestProduct&&<div style={{...card,border:`1px solid ${gold}30`,marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:10,color:textMuted,textTransform:"uppercase",letterSpacing:1}}>Latest Product</div>
+          <div style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontSize:16,fontWeight:700,marginTop:2}}>{latestProduct.name}</div>
+          <div style={{color:textMuted,fontSize:11,marginTop:2}}>{latestProduct.productName} · Cat {latestProduct.category} · {latestProduct.batchSize}{latestProduct.batchUnit} · {latestProduct.totalPct}% formula</div>
+          <div style={{color:textMuted,fontSize:11,marginTop:2}}>{latestProduct.bases?.length||0} base ingredients · {latestProduct.scents?.length||0} scents · {latestProduct.packaging?.length||0} packaging items</div>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>setTab("costs")} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>💰 View Costs</button>
+          <button onClick={()=>setTab("production")} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>🏭 Production</button>
+        </div>
+      </div>
+    </div>}
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12,marginBottom:20}}>
+      <div style={card}>
+        <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:8,letterSpacing:1}}>VERIFICATION STATUS</div>
+        <div style={{marginBottom:6}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>IFRA Verified</span><span style={{color:ok,fontWeight:600}}>{verifiedScents}</span></div>
+          <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:ok,width:`${SCENTS.length>0?verifiedScents/SCENTS.length*100:0}%`}}/></div>
+        </div>
+        <div style={{marginBottom:6}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>URL Confirmed</span><span style={{color:gold,fontWeight:600}}>{urlVerifiedScents}</span></div>
+          <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:gold,width:`${SCENTS.length>0?urlVerifiedScents/SCENTS.length*100:0}%`}}/></div>
+        </div>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:textMuted}}>Needs Checking</span><span style={{color:warn,fontWeight:600}}>{estimatedScents}</span></div>
+          <div style={{height:4,borderRadius:2,background:bgInput,overflow:"hidden"}}><div style={{height:"100%",borderRadius:2,background:warn,width:`${SCENTS.length>0?estimatedScents/SCENTS.length*100:0}%`}}/></div>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:8,letterSpacing:1}}>QUICK ACTIONS</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <button onClick={()=>setTab("builder")} style={{...btn,background:`${gold}15`,color:gold,border:`1px solid ${gold}30`,textAlign:"left",padding:"8px 12px",fontSize:12}}>⚗️ Build New Product</button>
+          <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:textMain,border:`1px solid ${border}`,textAlign:"left",padding:"8px 12px",fontSize:12,textDecoration:"none"}}>📝 Edit Scents in Google Sheet</a>
+          <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:textMain,border:`1px solid ${border}`,textAlign:"left",padding:"8px 12px",fontSize:12,textDecoration:"none"}}>📝 Edit Base Ingredients in Sheet</a>
+          <a href={SHEETS_CONFIG.editPackaging} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:textMain,border:`1px solid ${border}`,textAlign:"left",padding:"8px 12px",fontSize:12,textDecoration:"none"}}>📝 Edit Packaging in Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <div style={{...card,background:bgInput,border:`1px solid ${border}`}}>
+      <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:6,letterSpacing:1}}>HOW IT WORKS</div>
+      <div style={{fontSize:12,color:textMuted,lineHeight:1.8}}>
+        <strong style={{color:textMain}}>1. Ingredients</strong> — Scents, base ingredients, and packaging are loaded from your Google Sheet. Edit prices and add items there.<br/>
+        <strong style={{color:textMain}}>2. Build</strong> — Use the Product Builder to create formulations. Base → Scent → Packaging. IFRA limits are enforced.<br/>
+        <strong style={{color:textMain}}>3. Save & Export</strong> — Save products, export to CSV for Google Sheets, or JSON for backup.<br/>
+        <strong style={{color:textMain}}>4. Produce</strong> — Scale any product to production quantities in the Production tab.<br/>
+        <strong style={{color:textMain}}>5. Calculate</strong> — See full cost breakdown with margins in Costs / Profit. All prices excl. 21% BTW.
+      </div>
+    </div>
+  </div>;
 }
 function Library() {
   const [q,setQ]=useState("");
