@@ -495,6 +495,8 @@ function Builder({recipes,save,goRecipes}) {
   const [notes,setNotes]=useState("");
   const [saved,setSaved]=useState(false);
   const [showPifInfo,setShowPifInfo]=useState(false);
+  const [baseSearch,setBaseSearch]=useState("");
+  const [scentSearch,setScentSearch]=useState("");
   const preset=PRODUCTS[pt];
   const cat=preset.cat;
   const batchSize=parseFloat(cb)||preset.test;
@@ -505,7 +507,7 @@ function Builder({recipes,save,goRecipes}) {
     if(baseRows.find(r=>r.name===bName))return;
     const b=BASES.find(x=>x.name===bName);
     if(!b)return;
-    setBaseRows([...baseRows,{name:bName,pct:b.defaultPct,grams:(b.defaultPct/100)*batchSize,mode:"pct"}]);
+    setBaseRows([...baseRows,{name:bName,pct:b.defaultPct,grams:+(b.defaultPct/100*batchSize).toFixed(3),mode:"grams"}]);
   };
   const updBase=(i,field,value)=>{
     const n=[...baseRows];
@@ -592,10 +594,13 @@ function Builder({recipes,save,goRecipes}) {
         <span style={{fontWeight:600,fontSize:14}}>Base Ingredients</span>
         <span style={{fontSize:11,color:totalBasePct>100?danger:totalBasePct>0?gold:textMuted}}>Base total: {totalBasePct.toFixed(1)}%</span>
       </div>
-      <select onChange={e=>{if(e.target.value)addBase(e.target.value);e.target.value="";}} style={inp} defaultValue="">
-        <option value="" disabled>+ Add base ingredient...</option>
-        {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).map(b=><option key={b.name} value={b.name}>{b.name} ({b.role}) — max {b.maxPct}%</option>)}
-      </select>
+      <div style={{display:"flex",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+        <input value={baseSearch||""} onChange={e=>setBaseSearch(e.target.value)} placeholder="Search base ingredient..." style={{...inp,flex:"1 1 180px"}}/>
+        <select onChange={e=>{if(e.target.value)addBase(e.target.value);e.target.value="";setBaseSearch("");}} style={{...inp,flex:"1 1 220px"}} defaultValue="">
+          <option value="" disabled>+ Add base ingredient...</option>
+          {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>!baseSearch||b.name.toLowerCase().includes(baseSearch.toLowerCase())||b.role.toLowerCase().includes(baseSearch.toLowerCase())).map(b=><option key={b.name} value={b.name}>{b.name} ({b.role}) — max {b.maxPct}%</option>)}
+        </select>
+      </div>
       {baseRows.map((r,i)=>{
         const b=BASES.find(x=>x.name===r.name);
         const grams=(r.pct/100)*batchSize;
@@ -628,13 +633,16 @@ function Builder({recipes,save,goRecipes}) {
         <span style={{fontWeight:600,fontSize:14}}>Scent Blend</span>
         <span style={{fontSize:11,color:hasIFRAWarn?danger:totalScentPct>0?gold:textMuted}}>Scent total: {totalScentPct.toFixed(3)}% ({totalScentMl.toFixed(3)} ml)</span>
       </div>
-      <select onChange={e=>{if(e.target.value)addScent(e.target.value);e.target.value="";}} style={inp} defaultValue="">
-        <option value="" disabled>+ Add scent...</option>
-        {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{
-          const mx=s.ifra[cat]||0;
-          return <option key={s.name} value={s.name} style={{color:mx===0?danger:undefined}}>{s.name} ({s.type}) — max {mx===0?"⛔ BANNED":mx+"% in Cat "+cat}</option>;
-        })}
-      </select>
+      <div style={{display:"flex",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+        <input value={scentSearch||""} onChange={e=>setScentSearch(e.target.value)} placeholder="Search scent..." style={{...inp,flex:"1 1 180px"}}/>
+        <select onChange={e=>{if(e.target.value)addScent(e.target.value);e.target.value="";setScentSearch("");}} style={{...inp,flex:"1 1 220px"}} defaultValue="">
+          <option value="" disabled>+ Add scent...</option>
+          {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).filter(s=>!scentSearch||s.name.toLowerCase().includes(scentSearch.toLowerCase())||s.family.toLowerCase().includes(scentSearch.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{
+            const mx=s.ifra[cat]||0;
+            return <option key={s.name} value={s.name} style={{color:mx===0?danger:undefined}}>{s.name} ({s.type}) — max {mx===0?"⛔ BANNED":mx+"% in Cat "+cat}</option>;
+          })}
+        </select>
+      </div>
       {compScents.map((s,i)=><div key={s.name} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",padding:"6px 0",borderTop:i>0?`1px solid ${border}30`:"none"}}>
         <div style={{flex:"1 1 160px",minWidth:110}}>
           <div style={{fontWeight:500,fontSize:12}}>{s.name} <TypeBadge t={s.sd?.type||"FO"}/></div>
@@ -660,7 +668,7 @@ function Builder({recipes,save,goRecipes}) {
     </div>
     {hasIFRAWarn&&<Warn><strong>⚠️ IFRA Violation:</strong> One or more scents exceed the maximum for Cat {cat}. Reduce amounts before saving.</Warn>}
     {baseWarnings.map((w,i)=><Warn key={i}>{w}</Warn>)}
-    {totalPct>0&&Math.abs(totalPct-100)>5&&<Warn><strong>Formula total: {totalPct.toFixed(1)}%</strong> — should be close to 100%. {totalPct<95?"You're missing base ingredients.":"Your percentages exceed 100%."}</Warn>}
+    {totalPct>0&&Math.abs(totalPct-100)>5&&<Warn><strong>Formula total: {totalPct.toFixed(1)}%</strong> — should be close to 100%. {totalPct<95?"You're missing base ingredients.":"Your percentages exceed 100%."} <button onClick={()=>{const actualGrams=baseRows.reduce((a,r)=>a+(r.grams||r.pct/100*batchSize),0)+totalScentMl;setCb(String(actualGrams.toFixed(1)));}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}40`,padding:"2px 8px",marginLeft:6}}>Adjust batch size to {(baseRows.reduce((a,r)=>a+(r.grams||r.pct/100*batchSize),0)+totalScentMl).toFixed(1)}{batchUnit}</button></Warn>}
     {compScents.length>0&&!hasIFRAWarn&&<Ok>
       <strong>💡 Formulation tip:</strong>{" "}
       {cat==="5B"&&"Beard oil Cat 5B is strict — FOs max ~0.39%. Use essential oils for higher scent loads. For a 10ml batch, 1 drop = ~0.5% which already exceeds FO limits."}
@@ -706,14 +714,13 @@ function Recipes({recipes,save,goBuilder}) {
       return <div key={r.id} style={{...card,border:isOpen?`1px solid ${gold}40`:`1px solid ${border}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",cursor:"pointer"}} onClick={()=>setExpanded(isOpen?null:r.id)}>
           <div>
-            <h3 style={{fontFamily:"'Odibee Sans',cursive",color:textMain,fontSize:15,margin:"0 0 3px"}}>{r.name}</h3>
+            <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontSize:15,margin:"0 0 3px",fontWeight:700}}>{r.name}</h3>
             <div style={{fontSize:11,color:textMuted}}>
               {r.productName} • Cat {r.category} • {r.batchSize}{r.batchUnit} • {new Date(r.createdAt).toLocaleDateString("nl-NL")}
               {r.hasWarnings&&<span style={{color:warn,marginLeft:6}}>⚠️ has warnings</span>}
             </div>
           </div>
           <div style={{display:"flex",gap:4}}>
-            <button onClick={e=>{e.stopPropagation();setPifView(isPif?null:r.id);setExpanded(r.id);}} style={{...btn,background:isPif?`${gold}15`:bgInput,color:isPif?gold:textMuted,border:`1px solid ${isPif?gold:border}`,fontSize:10}}>📄 PIF Data</button>
             <button onClick={e=>{e.stopPropagation();del(r.id);}} style={{...btn,background:bgInput,color:danger,border:`1px solid ${danger}30`,fontSize:10}}>Delete</button>
           </div>
         </div>
@@ -757,6 +764,8 @@ function Recipes({recipes,save,goBuilder}) {
             </div>
             <div style={{fontSize:10,color:textDim,marginTop:4}}>Note: Allergens from fragrance ({'>'} 0.01% leave-on / {'>'} 0.001% rinse-off) must be listed after "Parfum". Check IFRA certificates.</div>
           </div>
+          {/* -- PIF TOGGLE -- */}
+          <button onClick={e=>{e.stopPropagation();setPifView(isPif?null:r.id);}} style={{...btn,marginTop:10,background:isPif?`${gold}15`:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,padding:"6px 14px"}}>📄 {isPif?"Hide":"Download"} Product Specification (PIF Data)</button>
           {/* -- PIF DATA EXPORT -- */}
           {isPif&&<div style={{marginTop:12,padding:"12px 14px",borderRadius:8,background:`${bg}ee`,border:`1px solid ${gold}30`}}>
             <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:14,marginBottom:8}}>📄 PIF / CPNP Data Package</div>
