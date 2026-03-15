@@ -5,7 +5,9 @@ const SHEETS_CONFIG = {
   scents: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVsy-YJvA2ypDOGGv1Zh2KbswjMf0gxJHHvCb2_xaMKltGfad2LtjHf208-28mcffldVw6Cay-RgG/pub?gid=0&single=true&output=csv",
   bases: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVsy-YJvA2ypDOGGv1Zh2KbswjMf0gxJHHvCb2_xaMKltGfad2LtjHf208-28mcffldVw6Cay-RgG/pub?gid=874764417&single=true&output=csv",
   packaging: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVsy-YJvA2ypDOGGv1Zh2KbswjMf0gxJHHvCb2_xaMKltGfad2LtjHf208-28mcffldVw6Cay-RgG/pub?gid=1964339911&single=true&output=csv",
-  editUrl: "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit",
+  editScents: "https://docs.google.com/spreadsheets/d/18EqvZ4xcSEd1l1fhUniO-Q_Agjc3C5MXVuU1nXsgpTI/edit?gid=0#gid=0",
+  editBases: "https://docs.google.com/spreadsheets/d/18EqvZ4xcSEd1l1fhUniO-Q_Agjc3C5MXVuU1nXsgpTI/edit?gid=874764417#gid=874764417",
+  editPackaging: "https://docs.google.com/spreadsheets/d/18EqvZ4xcSEd1l1fhUniO-Q_Agjc3C5MXVuU1nXsgpTI/edit?gid=1964339911#gid=1964339911",
 };
 function parseCSV(text) {
   const lines = text.split('\n').filter(l => l.trim());
@@ -306,7 +308,7 @@ function App() {
           </div>
           <div style={{display:"flex",gap:0,overflowX:"auto"}}>
             {tabs.map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:"none",border:"none",borderBottom:tab===t.id?`2px solid ${gold}`:"2px solid transparent",color:tab===t.id?gold:"#ffffff",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'Odibee Sans',cursive",letterSpacing:1,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",transition:"all 0.2s",textTransform:"uppercase"}}>
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"8px 16px",background:"none",border:"none",borderBottom:tab===t.id?`2px solid ${gold}`:"2px solid transparent",color:tab===t.id?gold:"#ffffff",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Open Sans',sans-serif",display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap",transition:"all 0.2s"}}>
                 <span>{t.icon}</span>{t.label}{t.id==="recipes"&&recipes.length>0&&<span style={{background:gold+"30",color:gold,borderRadius:10,padding:"0 5px",fontSize:10,marginLeft:2}}>{recipes.length}</span>}
               </button>
             ))}
@@ -366,7 +368,7 @@ function Library() {
         <option value="all">All Categories (no filter)</option>
         {IFRA_CAT_ORDER.map(k=><option key={k} value={k}>Cat {k}: {IFRA_CATS[k].label}</option>)}
       </select>
-      <a href={SHEETS_CONFIG.editUrl+"#gid=0"} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>+ Add in Google Sheet</a>
+      <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>+ Add in Google Sheet</a>
     </div>
     <div style={{fontSize:11,color:textMuted,marginBottom:8}}>
       Showing <strong style={{color:textMain}}>{filtered.length}</strong>
@@ -398,7 +400,8 @@ function Library() {
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:s.ifraSource==="verified"?`${ok}20`:`${warn}20`,color:s.ifraSource==="verified"?ok:warn,fontWeight:600}}>IFRA: {s.ifraSource==="verified"?"[x] Verified":"⚠ Estimated"}</span>
                 <span style={{fontSize:10,color:textDim}}>€{(s.pricePer100ml||0).toFixed(2)}/100ml</span>
-                <button onClick={e=>{e.stopPropagation();setEditing(editing===s.name?null:s.name);}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px"}}>{editing===s.name?"Close":"✏️ Edit"}</button>
+                <button onClick={e=>{e.stopPropagation();setEditing(editing===s.name?null:s.name);}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px"}}>{editing===s.name?"Close":"✏️ Edit locally"}</button>
+                <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",textDecoration:"none"}}>📝 Edit in Sheet</a>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
                 {IFRA_CAT_ORDER.map(cat=>{const v=s.ifra[cat]||0;return <div key={cat} style={{padding:"3px 8px",borderRadius:5,background:cv===cat?`${gold}15`:bgCard,border:`1px solid ${cv===cat?gold:border}`,fontSize:10}}>
@@ -468,7 +471,7 @@ function IngredientsLib() {
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search ingredient or INCI..." style={{...inp,flex:"1 1 200px"}}/>
       <select value={rf} onChange={e=>setRf(e.target.value)} style={{...inp,width:150}}><option value="all">All Roles</option>{roles.map(r=><option key={r} value={r}>{r}</option>)}</select>
-      <a href={SHEETS_CONFIG.editUrl+"#gid=874764417"} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>+ Add in Google Sheet</a>
+      <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>+ Add in Google Sheet</a>
     </div>
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -491,7 +494,8 @@ function IngredientsLib() {
               <div style={{fontSize:11,color:textMain,marginBottom:6}}><strong style={{color:gold}}>Notes:</strong> {b.notes}</div>
               <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Default %: {b.defaultPct}% · Max: {b.maxPct}% · €{(b.pricePer100||0).toFixed(2)}/{b.priceSize||100}ml · {b.youwish?"YouWish":"External"}</div>
               <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Used in: {(b.products||[]).map(p=>PRODUCTS[p]?.name).filter(Boolean).join(", ")}</div>
-              <button onClick={e=>{e.stopPropagation();setEditing(editing===b.name?null:b.name);}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6}}>{editing===b.name?"Close":"✏️ Edit"}</button>
+              <button onClick={e=>{e.stopPropagation();setEditing(editing===b.name?null:b.name);}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6}}>{editing===b.name?"Close":"✏️ Edit locally"}</button>
+              <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6,textDecoration:"none",marginLeft:6}}>📝 Edit in Sheet</a>
               {editing===b.name&&<div style={{padding:"8px 10px",borderRadius:6,background:bgCard,border:`1px solid ${gold}20`,marginBottom:8}}>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   <div style={{flex:"1 1 220px"}}><label style={lbl}>Product URL</label><input defaultValue={overrides[b.name]?.url||b.url||""} onBlur={e=>setOverride(b.name,"url",e.target.value)} placeholder="https://www.youwish.nl/..." style={inp}/></div>
@@ -1247,7 +1251,7 @@ function Packaging() {
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Packaging items loaded from Google Sheet. Add new items there.</p>
     <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
       <select value={cf} onChange={e=>setCf(e.target.value)} style={{...inp,width:160}}><option value="all">All Categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select>
-      <a href={SHEETS_CONFIG.editUrl} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none"}}>+ Add in Google Sheet</a>
+      <a href={SHEETS_CONFIG.editPackaging} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none"}}>+ Add in Google Sheet</a>
     </div>
     {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}>
       <div style={{fontSize:40,marginBottom:8}}>📦</div>
