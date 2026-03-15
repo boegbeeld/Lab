@@ -603,7 +603,6 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
   },[editingProduct]);
   const preset=PRODUCTS[pt];
   const cat=preset.cat;
-  const batchSize=parseFloat(cb)||preset.test;
   const batchUnit=cbUnit;
   // Auto-filter bases for product
   const availBases=useMemo(()=>BASES.filter(b=>b.products.includes(pt)),[pt]);
@@ -611,21 +610,22 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
     if(baseRows.find(r=>r.name===bName))return;
     const b=BASES.find(x=>x.name===bName);
     if(!b)return;
-    // Vitamin E, ROE default to drops mode
+    // Default grams based on reference batch size
+    const refBatch=parseFloat(cb)||preset.test;
     const useDrops=b.name.includes("Vitamin E")||b.name.includes("Rosemary Extract");
     if(useDrops){
-      const drops=Math.round(b.defaultPct/100*batchSize/DROP_ML);
+      const drops=Math.round(b.defaultPct/100*refBatch/DROP_ML);
       const ml=drops*DROP_ML;
-      setBaseRows([...baseRows,{name:bName,pct:+(ml/batchSize*100).toFixed(3),grams:+ml.toFixed(3),drops,mode:"drops"}]);
+      setBaseRows([...baseRows,{name:bName,grams:+ml.toFixed(3),drops,mode:"drops"}]);
     } else {
-      setBaseRows([...baseRows,{name:bName,pct:b.defaultPct,grams:+(b.defaultPct/100*batchSize).toFixed(3),drops:0,mode:"grams"}]);
+      const g=+(b.defaultPct/100*refBatch).toFixed(3);
+      setBaseRows([...baseRows,{name:bName,grams:g,drops:0,mode:"grams"}]);
     }
   };
   const updBase=(i,field,value)=>{
     const n=[...baseRows];
-    if(field==="pct"){const p=parseFloat(value)||0;n[i]={...n[i],pct:p,grams:+(p/100*batchSize).toFixed(3),drops:Math.round(p/100*batchSize/DROP_ML)};}
-    else if(field==="grams"||field==="ml"){const g=parseFloat(value)||0;n[i]={...n[i],grams:g,pct:+(g/batchSize*100).toFixed(3),drops:Math.round(g/DROP_ML)};}
-    else if(field==="drops"){const d=parseInt(value)||0;const ml=d*DROP_ML;n[i]={...n[i],drops:d,grams:+ml.toFixed(3),pct:+(ml/batchSize*100).toFixed(3)};}
+    if(field==="grams"||field==="ml"){const g=parseFloat(value)||0;n[i]={...n[i],grams:g,drops:Math.round(g/DROP_ML)};}
+    else if(field==="drops"){const d=parseInt(value)||0;const ml=d*DROP_ML;n[i]={...n[i],drops:d,grams:+ml.toFixed(3)};}
     else if(field==="mode"){n[i]={...n[i],mode:value};}
     setBaseRows(n);
   };
@@ -636,25 +636,30 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
   };
   const updScent=(i,f,v)=>{ const n=[...scentRows]; n[i]={...n[i],[f]:v}; setScentRows(n); };
   const rmScent=(i)=>setScentRows(scentRows.filter((_,j)=>j!==i));
-  // Compute
-  const totalBasePct=baseRows.reduce((a,r)=>a+r.pct,0);
+  // Compute — batch size is derived from what you actually added
+  const totalBaseGrams=baseRows.reduce((a,r)=>a+(r.grams||0),0);
   const compScents=scentRows.map(s=>{
     const sd=SCENTS.find(x=>x.name===s.name);
     const mx=sd?(sd.ifra[cat]||0):0;
-    let ml,pct,drops;
-    if(s.mode==="drops"){drops=parseInt(s.drops)||0;ml=drops*DROP_ML;pct=(ml/batchSize)*100;}
-    else{pct=parseFloat(s.pct)||0;ml=(pct/100)*batchSize;drops=Math.round(ml/DROP_ML);}
-    return {...s,ml,pct,drops,maxPct:mx,over:mx>0&&pct>mx,banned:mx===0,sd};
+    let ml,drops;
+    if(s.mode==="drops"){drops=parseInt(s.drops)||0;ml=drops*DROP_ML;}
+    else{const pctVal=parseFloat(s.pct)||0;ml=(pctVal/100)*(totalBaseGrams||1);drops=Math.round(ml/DROP_ML);}
+    return {...s,ml,drops,maxPct:mx,sd};
   });
   const totalScentMl=compScents.reduce((a,s)=>a+s.ml,0);
-  const totalScentPct=(totalScentMl/batchSize)*100;
-  const totalPct=totalBasePct+totalScentPct;
-  const hasIFRAWarn=compScents.some(s=>s.over||s.banned);
-  const baseTooHigh=totalBasePct>100;
-  const totalOff=Math.abs(totalPct-100)>2;
+  const batchSize=totalBaseGrams+totalScentMl;
+  // Now calculate percentages from the actual batch size
+  const baseRowsWithPct=baseRows.map(r=>({...r,pct:batchSize>0?+((r.grams||0)/batchSize*100).toFixed(2):0}));
+  const compScentsWithPct=compScents.map(s=>({...s,pct:batchSize>0?+(s.ml/batchSize*100).toFixed(3):0,over:s.maxPct>0&&batchSize>0&&(s.ml/batchSize*100)>s.maxPct,banned:s.maxPct===0}));
+  const totalBasePct=batchSize>0?+(totalBaseGrams/batchSize*100).toFixed(2):0;
+  const totalScentPct=batchSize>0?+(totalScentMl/batchSize*100).toFixed(3):0;
+  const totalPct=batchSize>0?100:0; // Always 100% by definition now
+  const hasIFRAWarn=compScentsWithPct.some(s=>s.over||s.banned);
+  const baseTooHigh=false; // Can't exceed 100% anymore
+  const totalOff=false;
   // Base warnings
   const baseWarnings=[];
-  baseRows.forEach(r=>{
+  baseRowsWithPct.forEach(r=>{
     const b=BASES.find(x=>x.name===r.name);
     if(b&&r.pct>b.maxPct)baseWarnings.push(`${r.name}: ${r.pct}% exceeds recommended max ${b.maxPct}%`);
   });
@@ -673,10 +678,10 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
     if(!name.trim())return;
     const product={
       id:editId||Date.now(), name, notes, productType:pt, productName:PRODUCTS[pt].name,
-      batchSize, batchUnit, category:cat,
-      bases:baseRows.map(r=>{const b=BASES.find(x=>x.name===r.name);return{...r,inci:b?.inci||"",role:b?.role||""};}),
-      scents:compScents.map(s=>({name:s.name,type:s.sd?.type||"FO",drops:s.drops,ml:+s.ml.toFixed(4),pct:+s.pct.toFixed(3),maxPct:s.maxPct,inci:s.sd?.type==="FO"?"Parfum":s.sd?.name||"Parfum"})),
-      totalBasePct:+totalBasePct.toFixed(2), totalScentPct:+totalScentPct.toFixed(3), totalPct:+totalPct.toFixed(2),
+      batchSize:+batchSize.toFixed(2), batchUnit, category:cat,
+      bases:baseRowsWithPct.map(r=>{const b=BASES.find(x=>x.name===r.name);return{...r,inci:b?.inci||"",role:b?.role||""};}),
+      scents:compScentsWithPct.map(s=>({name:s.name,type:s.sd?.type||"FO",drops:s.drops,ml:+s.ml.toFixed(4),pct:+s.pct,maxPct:s.maxPct,inci:s.sd?.type==="FO"?"Parfum":s.sd?.name||"Parfum"})),
+      totalBasePct, totalScentPct:+totalScentPct, totalPct:100,
       totalScentMl:+totalScentMl.toFixed(3),
       createdAt:editId?recipes.find(r=>r.id===editId)?.createdAt||new Date().toISOString():new Date().toISOString(),
       updatedAt:editId?new Date().toISOString():undefined,
@@ -699,13 +704,16 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
         <select value={pt} onChange={e=>{setPt(e.target.value);setBaseRows([]);setScentRows([]);setCb(String(PRODUCTS[e.target.value].test));setCbUnit(PRODUCTS[e.target.value].tU);}} style={inp}>
           {Object.entries(PRODUCTS).map(([k,v])=><option key={k} value={k}>{v.name}</option>)}
         </select></div>
-      <div style={{flex:"0 0 auto"}}><label style={lbl}>Batch Size</label>
+      <div style={{flex:"0 0 auto"}}><label style={lbl}>Reference Size (for defaults)</label>
         <div style={{display:"flex",gap:4}}>
           <input type="number" value={cb} onChange={e=>setCb(e.target.value)} style={{...inp,width:80,textAlign:"center"}}/>
           <select value={cbUnit} onChange={e=>setCbUnit(e.target.value)} style={{...inp,width:55}}>
             <option value="ml">ml</option><option value="g">g</option>
           </select>
         </div>
+      </div>
+      <div style={{flex:"0 0 auto"}}><label style={lbl}>Actual Batch Size</label>
+        <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,padding:"4px 0"}}>{batchSize>0?batchSize.toFixed(1):"-"} {batchUnit}</div>
       </div>
       <div style={{flex:"0 0 auto"}}><Pill color={gold} bg={`${gold}15`}>IFRA Cat {cat} — {IFRA_CATS[cat].label}</Pill></div>
     </div>
@@ -723,9 +731,8 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
           {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>b.name.toLowerCase().includes((baseSearch||"").toLowerCase())||b.role.toLowerCase().includes((baseSearch||"").toLowerCase())).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No matches found</div>}
         </div>}
       </div>
-      {baseRows.map((r,i)=>{
+      {baseRowsWithPct.map((r,i)=>{
         const b=BASES.find(x=>x.name===r.name);
-        const grams=(r.pct/100)*batchSize;
         const overMax=b&&r.pct>b.maxPct;
         return <div key={r.name} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",padding:"6px 0",borderTop:i>0?`1px solid ${border}30`:"none"}}>
           <div style={{flex:"1 1 180px",minWidth:120}}>
@@ -734,17 +741,15 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
           </div>
           <div style={{display:"flex",alignItems:"center",gap:4}}>
             <select value={r.mode||"grams"} onChange={e=>updBase(i,"mode",e.target.value)} style={{...inp,width:55,fontSize:10,padding:4}}>
-              <option value="grams">g</option><option value="ml">ml</option><option value="pct">%</option><option value="drops">Drops</option>
+              <option value="grams">g</option><option value="ml">ml</option><option value="drops">Drops</option>
             </select>
-            {(r.mode==="pct")
-              ?<input type="number" min="0" step="0.1" value={r.pct} onChange={e=>updBase(i,"pct",e.target.value)} style={{...inp,width:65,textAlign:"center"}}/>
-              :(r.mode==="drops")
+            {(r.mode==="drops")
               ?<input type="number" min="0" step="1" value={r.drops||0} onChange={e=>updBase(i,"drops",e.target.value)} style={{...inp,width:55,textAlign:"center"}}/>
-              :<input type="number" min="0" step="0.01" value={r.grams||+(r.pct/100*batchSize).toFixed(3)} onChange={e=>updBase(i,"grams",e.target.value)} style={{...inp,width:70,textAlign:"center"}}/>
+              :<input type="number" min="0" step="0.01" value={r.grams||0} onChange={e=>updBase(i,"grams",e.target.value)} style={{...inp,width:70,textAlign:"center"}}/>
             }
           </div>
-          <div style={{fontSize:11,color:textMuted,minWidth:120}}>
-            {r.mode==="pct" ? `= ${grams.toFixed(2)}g` : r.mode==="drops" ? `= ${(r.grams||0).toFixed(2)}ml = ${r.pct?.toFixed(2)||0}%` : `= ${r.pct?.toFixed(2)||0}%`}
+          <div style={{fontSize:11,color:gold,fontWeight:600,minWidth:60}}>
+            {r.pct}%
           </div>
           {overMax&&<span style={{fontSize:10,color:warn,fontWeight:600}}>⚠️ Over max</span>}
           <button onClick={()=>rmBase(i)} style={{background:"none",border:"none",color:danger,cursor:"pointer",fontSize:14,padding:"0 4px"}}>×</button>
@@ -769,7 +774,7 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
           {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).filter(s=>s.name.toLowerCase().includes((scentSearch||"").toLowerCase())||s.family.toLowerCase().includes((scentSearch||"").toLowerCase())).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No matches found</div>}
         </div>}
       </div>
-      {compScents.map((s,i)=><div key={s.name} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",padding:"6px 0",borderTop:i>0?`1px solid ${border}30`:"none"}}>
+      {compScentsWithPct.map((s,i)=><div key={s.name} style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",padding:"6px 0",borderTop:i>0?`1px solid ${border}30`:"none"}}>
         <div style={{flex:"1 1 160px",minWidth:110}}>
           <div style={{fontWeight:500,fontSize:12}}>{s.name} <TypeBadge t={s.sd?.type||"FO"}/></div>
           <div style={{fontSize:10,color:textMuted}}>{s.sd?.note} • max {s.maxPct}%</div>
@@ -794,8 +799,7 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
     </div>
     {hasIFRAWarn&&<Warn><strong>⚠️ IFRA Violation:</strong> One or more scents exceed the maximum for Cat {cat}. Reduce amounts before saving.</Warn>}
     {baseWarnings.map((w,i)=><Warn key={i}>{w}</Warn>)}
-    {totalPct>0&&Math.abs(totalPct-100)>5&&<Warn><strong>Formula total: {totalPct.toFixed(1)}%</strong> — should be close to 100%. {totalPct<95?"You're missing base ingredients.":"Your percentages exceed 100%."} <button onClick={()=>{const actualGrams=baseRows.reduce((a,r)=>a+(r.grams||r.pct/100*batchSize),0)+totalScentMl;setCb(String(actualGrams.toFixed(1)));}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}40`,padding:"2px 8px",marginLeft:6}}>Adjust batch size to {(baseRows.reduce((a,r)=>a+(r.grams||r.pct/100*batchSize),0)+totalScentMl).toFixed(1)}{batchUnit}</button></Warn>}
-    {compScents.length>0&&!hasIFRAWarn&&<Ok>
+    {compScentsWithPct.length>0&&!hasIFRAWarn&&<Ok>
       <strong>💡 Formulation tip:</strong>{" "}
       {cat==="5B"&&"Beard oil Cat 5B is strict — FOs max ~0.39%. Use essential oils for higher scent loads. For a 10ml batch, 1 drop = ~0.5% which already exceeds FO limits."}
       {cat==="7B"&&"Pomade Cat 7B allows ~1% FO. For 50g batch = ~0.5ml total FO or ~10 drops. Layer 3-5 scents for complexity."}
@@ -803,12 +807,13 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
       {cat==="9"&&"Soap Cat 9 allows ~3.57% FO. Rinse-off so skin exposure is brief. Be generous with scent."}
       {!["5B","7B","4","9"].includes(cat)&&"Check individual IFRA limits per scent in the library tab."}
     </Ok>}
-    {(baseRows.length>0||compScents.length>0)&&<div style={{...card,marginTop:12,background:`${bg}ee`,border:"1px solid #3a3520"}}>
+    {(baseRows.length>0||compScentsWithPct.length>0)&&<div style={{...card,marginTop:12,background:`${bg}ee`,border:"1px solid #3a3520"}}>
       <div style={{fontWeight:600,fontSize:14,color:gold,marginBottom:8}}>Formula Summary</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,fontSize:12}}>
-        <div><span style={{color:textMuted}}>Base:</span> <strong>{totalBasePct.toFixed(1)}%</strong></div>
-        <div><span style={{color:textMuted}}>Scent:</span> <strong>{totalScentPct.toFixed(3)}%</strong></div>
-        <div><span style={{color:textMuted}}>Total:</span> <strong style={{color:Math.abs(totalPct-100)<2?ok:warn}}>{totalPct.toFixed(2)}%</strong></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,fontSize:12}}>
+        <div><span style={{color:textMuted}}>Batch:</span> <strong style={{color:gold}}>{batchSize.toFixed(1)}{batchUnit}</strong></div>
+        <div><span style={{color:textMuted}}>Base:</span> <strong>{totalBaseGrams.toFixed(1)}{batchUnit} ({totalBasePct}%)</strong></div>
+        <div><span style={{color:textMuted}}>Scent:</span> <strong>{totalScentMl.toFixed(2)}ml ({totalScentPct}%)</strong></div>
+        <div><span style={{color:textMuted}}>Total:</span> <strong style={{color:ok}}>100%</strong></div>
       </div>
     </div>}
     {/* PACKAGING SELECTION — always visible */}
