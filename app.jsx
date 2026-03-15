@@ -400,7 +400,6 @@ function Library() {
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:10,padding:"2px 6px",borderRadius:4,background:s.ifraSource==="verified"?`${ok}20`:`${warn}20`,color:s.ifraSource==="verified"?ok:warn,fontWeight:600}}>IFRA: {s.ifraSource==="verified"?"[x] Verified":"⚠ Estimated"}</span>
                 <span style={{fontSize:10,color:textDim}}>€{(s.pricePer100ml||0).toFixed(2)}/100ml</span>
-                <button onClick={e=>{e.stopPropagation();setEditing(editing===s.name?null:s.name);}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px"}}>{editing===s.name?"Close":"✏️ Edit locally"}</button>
                 <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",textDecoration:"none"}}>📝 Edit in Sheet</a>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
@@ -408,24 +407,6 @@ function Library() {
                   <span style={{color:textMuted}}>Cat {cat}:</span> <span style={{color:v===0?danger:gold,fontWeight:600}}>{v===0?"⛔":v+"%"}</span>
                 </div>})}
               </div>
-              {editing===s.name&&<div style={{padding:"8px 10px",borderRadius:6,background:bgCard,border:`1px solid ${gold}20`,marginBottom:8}}>
-                <div style={{fontSize:10,color:gold,fontWeight:600,marginBottom:6,textTransform:"uppercase"}}>Edit — saves automatically</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:6}}>
-                  <div style={{flex:"1 1 220px"}}><label style={lbl}>Product URL</label><input defaultValue={overrides[s.name]?.url||s.url||""} onBlur={e=>setOverride(s.name,"url",e.target.value)} placeholder="https://www.youwish.nl/en/shop/..." style={inp}/></div>
-                  <div style={{flex:"0 0 90px"}}><label style={lbl}>Price (€)</label><input type="number" step="0.01" defaultValue={overrides[s.name]?.pricePer100ml||""} onBlur={e=>setOverride(s.name,"pricePer100ml",parseFloat(e.target.value)||0)} placeholder={String(s.pricePer100ml||"")} style={inp}/></div>
-                  <div style={{flex:"0 0 70px"}}><label style={lbl}>Per (ml)</label><input type="number" defaultValue={overrides[s.name]?.priceSize||100} onBlur={e=>setOverride(s.name,"priceSize",parseInt(e.target.value)||100)} style={inp}/></div>
-                </div>
-                <div style={{fontSize:10,color:textMuted,marginBottom:4}}>IFRA Max % per category:</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
-                  {IFRA_CAT_ORDER.map(cat=><div key={cat} style={{display:"flex",alignItems:"center",gap:2}}>
-                    <span style={{fontSize:9,color:textMuted,minWidth:30}}>Cat{cat}</span>
-                    <input type="number" step="0.01" defaultValue={overrides[s.name]?.ifra?.[cat]??""} onBlur={e=>{const iv={...(overrides[s.name]?.ifra||{}),[cat]:parseFloat(e.target.value)};setOverride(s.name,"ifra",iv);}} placeholder={String(s.ifra[cat]||0)} style={{...inp,width:50,textAlign:"center",padding:"2px 4px",fontSize:10}}/>
-                  </div>)}
-                  <label style={{display:"flex",alignItems:"center",gap:3,fontSize:10,color:textMuted,cursor:"pointer",marginLeft:8}}>
-                    <input type="checkbox" checked={overrides[s.name]?.ifraVerified||false} onChange={e=>setOverride(s.name,"ifraVerified",e.target.checked)}/> Verified [x]
-                  </label>
-                </div>
-              </div>}
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <a href={s.url||scentUrl(s.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View on YouWish -></a>
                 {s.custom&&<button onClick={()=>saveCustoms(customs.filter(c=>c.name!==s.name))} style={{...btn,color:danger,background:"transparent",border:`1px solid ${danger}30`,fontSize:10}}>Remove</button>}
@@ -494,16 +475,7 @@ function IngredientsLib() {
               <div style={{fontSize:11,color:textMain,marginBottom:6}}><strong style={{color:gold}}>Notes:</strong> {b.notes}</div>
               <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Default %: {b.defaultPct}% · Max: {b.maxPct}% · €{(b.pricePer100||0).toFixed(2)}/{b.priceSize||100}ml · {b.youwish?"YouWish":"External"}</div>
               <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Used in: {(b.products||[]).map(p=>PRODUCTS[p]?.name).filter(Boolean).join(", ")}</div>
-              <button onClick={e=>{e.stopPropagation();setEditing(editing===b.name?null:b.name);}} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6}}>{editing===b.name?"Close":"✏️ Edit locally"}</button>
-              <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6,textDecoration:"none",marginLeft:6}}>📝 Edit in Sheet</a>
-              {editing===b.name&&<div style={{padding:"8px 10px",borderRadius:6,background:bgCard,border:`1px solid ${gold}20`,marginBottom:8}}>
-                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                  <div style={{flex:"1 1 220px"}}><label style={lbl}>Product URL</label><input defaultValue={overrides[b.name]?.url||b.url||""} onBlur={e=>setOverride(b.name,"url",e.target.value)} placeholder="https://www.youwish.nl/..." style={inp}/></div>
-                  <div style={{flex:"0 0 80px"}}><label style={lbl}>Max %</label><input type="number" step="1" defaultValue={overrides[b.name]?.maxPct||""} onBlur={e=>setOverride(b.name,"maxPct",parseFloat(e.target.value)||0)} placeholder={String(b.maxPct)} style={inp}/></div>
-                  <div style={{flex:"0 0 80px"}}><label style={lbl}>Price (€)</label><input type="number" step="0.01" defaultValue={overrides[b.name]?.pricePer100||""} onBlur={e=>setOverride(b.name,"pricePer100",parseFloat(e.target.value)||0)} placeholder={String(b.pricePer100||"")} style={inp}/></div>
-                  <div style={{flex:"0 0 65px"}}><label style={lbl}>Per (ml)</label><input type="number" defaultValue={overrides[b.name]?.priceSize||100} onBlur={e=>setOverride(b.name,"priceSize",parseInt(e.target.value)||100)} style={inp}/></div>
-                </div>
-              </div>}
+              <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6,textDecoration:"none"}}>📝 Edit in Sheet</a>
               <a href={b.url||baseUrl(b.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View on YouWish -></a>
               {b.custom&&<button onClick={()=>saveCustoms(customs.filter(c=>c.name!==b.name))} style={{...btn,marginLeft:10,color:danger,background:"transparent",border:`1px solid ${danger}30`,fontSize:10}}>Remove</button>}
             </div></td></tr>}
@@ -1177,23 +1149,17 @@ function CostCalc({recipes}) {
       {/* -- INGREDIENT BREAKDOWN (with editable prices) -- */}
       <div style={{...card,marginTop:12}}>
         <div style={sectionTitle}>Section 1 — Ingredients</div>
-        <p style={{fontSize:10,color:textMuted,margin:"0 0 8px"}}>Prices default to YouWish estimates. Adjust per ingredient — changes apply to Scents/Base tabs too.</p>
+        <p style={{fontSize:10,color:textMuted,margin:"0 0 8px"}}>Prices loaded from Google Sheet. <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" style={{color:gold}}>Edit prices in Sheet</a></p>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead><tr style={{borderBottom:`1px solid ${border}`}}>
-            {["Ingredient","%",`Per ${cSz}${containerUnit}`,"€ / size","Cost/unit"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+            {["Ingredient","%",`Per ${cSz}${containerUnit}`,"€/100","Cost/unit"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
           </tr></thead>
           <tbody>{ingredientCosts.map((ing,i)=>(
             <tr key={i} style={{borderBottom:`1px solid ${border}30`}}>
               <td style={{padding:"6px 8px",fontWeight:500}}>{ing.name} {ing.isScent&&<TypeBadge t={ing.type}/>}</td>
               <td style={{padding:"6px 8px",color:textMuted}}>{ing.pct}%</td>
               <td style={{padding:"6px 8px",color:textMuted}}>{ing.amtPerContainer.toFixed(2)} {ing.isScent?"ml":containerUnit}</td>
-              <td style={{padding:"6px 8px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:2}}>
-                  <span style={{color:textMuted,fontSize:10}}>€</span>
-                  <input type="number" step="0.01" defaultValue={ing.pricePerUnit.toFixed(2)} onBlur={e=>{const v=parseFloat(e.target.value)||0;if(ing.isScent){const o={...scentOv,[ing.name]:{...(scentOv[ing.name]||{}),pricePer100ml:v}};setScentOv(o);store.set("bb-scent-overrides",JSON.stringify(o));}else{const o={...baseOv,[ing.name]:{...(baseOv[ing.name]||{}),pricePer100:v}};setBaseOv(o);store.set("bb-base-overrides",JSON.stringify(o));}}} style={{...inp,width:55,textAlign:"right",padding:"3px 4px",fontSize:11}}/>
-                  <span style={{color:textDim,fontSize:9}}>/100</span>
-                </div>
-              </td>
+              <td style={{padding:"6px 8px",color:ing.pricePerUnit>0?textMain:danger}}>{ing.pricePerUnit>0?`€${ing.pricePerUnit.toFixed(2)}`:"—"}</td>
               <td style={{padding:"6px 8px",color:gold,fontWeight:600}}>€{ing.costPerContainer.toFixed(3)}</td>
             </tr>
           ))}</tbody>
