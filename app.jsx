@@ -287,6 +287,7 @@ const Pill = ({color=textMuted,bg:pbg=bgInput,children}) => <span style={{fontSi
 function App() {
   const [tab, setTab] = useState("library");
   const [recipes, setRecipes] = useState([]);
+  const [editingProduct, setEditingProduct] = useState(null);
   useEffect(() => {
     (async()=>{try{const r=await store.get("bb-recipes");if(r?.value)setRecipes(JSON.parse(r.value));}catch(e){}})();
   }, []);
@@ -319,8 +320,8 @@ function App() {
         {tab==="library"&&<Library/>}
         {tab==="ingredients"&&<IngredientsLib/>}
         {tab==="packaging"&&<Packaging/>}
-        {tab==="builder"&&<Builder recipes={recipes} save={save} goRecipes={()=>setTab("recipes")}/>}
-        {tab==="recipes"&&<Recipes recipes={recipes} save={save} goBuilder={()=>setTab("builder")}/>}
+        {tab==="builder"&&<Builder recipes={recipes} save={save} goRecipes={()=>setTab("recipes")} editingProduct={editingProduct} clearEdit={()=>setEditingProduct(null)}/>}
+        {tab==="recipes"&&<Recipes recipes={recipes} save={save} goBuilder={()=>setTab("builder")} onEdit={(r)=>{setEditingProduct(r);setTab("builder");}}/>}
         {tab==="production"&&<Production recipes={recipes}/>}
         {tab==="costs"&&<CostCalc recipes={recipes}/>}
       </div>
@@ -485,7 +486,7 @@ function IngredientsLib() {
     </div>
   </div>;
 }
-function Builder({recipes,save,goRecipes}) {
+function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
   const [pt,setPt]=useState("pomade");
   const [cb,setCb]=useState("50");
   const [cbUnit,setCbUnit]=useState("g");
@@ -499,6 +500,23 @@ function Builder({recipes,save,goRecipes}) {
   const [scentSearch,setScentSearch]=useState(null);
   const [pkgSearch,setPkgSearch]=useState(null);
   const [selectedPkg,setSelectedPkg]=useState([]);
+  const [editId,setEditId]=useState(null);
+
+  // Load product for editing
+  useEffect(()=>{
+    if(editingProduct){
+      setPt(editingProduct.productType||"pomade");
+      setCb(String(editingProduct.batchSize||50));
+      setCbUnit(editingProduct.batchUnit||"g");
+      setName(editingProduct.name||"");
+      setNotes(editingProduct.notes||"");
+      setEditId(editingProduct.id);
+      setBaseRows((editingProduct.bases||[]).map(b=>({...b,mode:b.mode||"grams",grams:b.grams||(b.pct/100*(editingProduct.batchSize||50))})));
+      setScentRows((editingProduct.scents||[]).map(s=>({name:s.name,mode:s.drops?"drops":"pct",drops:s.drops||0,pct:s.pct?String(s.pct):""})));
+      setSelectedPkg(editingProduct.packaging||[]);
+      clearEdit();
+    }
+  },[editingProduct]);
   const preset=PRODUCTS[pt];
   const cat=preset.cat;
   const batchSize=parseFloat(cb)||preset.test;
@@ -569,18 +587,24 @@ function Builder({recipes,save,goRecipes}) {
   if(!hasWater&&hasOil&&!hasAntioxidant)baseWarnings.push("💡 Oil-based formula — consider adding Vitamin E or Rosemary Extract to prevent rancidity.");
   const handleSave=()=>{
     if(!name.trim())return;
-    const recipe={
-      id:Date.now(), name, notes, productType:pt, productName:PRODUCTS[pt].name,
+    const product={
+      id:editId||Date.now(), name, notes, productType:pt, productName:PRODUCTS[pt].name,
       batchSize, batchUnit, category:cat,
       bases:baseRows.map(r=>{const b=BASES.find(x=>x.name===r.name);return{...r,inci:b?.inci||"",role:b?.role||""};}),
       scents:compScents.map(s=>({name:s.name,type:s.sd?.type||"FO",drops:s.drops,ml:+s.ml.toFixed(4),pct:+s.pct.toFixed(3),maxPct:s.maxPct,inci:s.sd?.type==="FO"?"Parfum":s.sd?.name||"Parfum"})),
       totalBasePct:+totalBasePct.toFixed(2), totalScentPct:+totalScentPct.toFixed(3), totalPct:+totalPct.toFixed(2),
       totalScentMl:+totalScentMl.toFixed(3),
-      createdAt:new Date().toISOString(), hasWarnings:hasIFRAWarn||baseWarnings.length>0,
+      createdAt:editId?recipes.find(r=>r.id===editId)?.createdAt||new Date().toISOString():new Date().toISOString(),
+      updatedAt:editId?new Date().toISOString():undefined,
+      hasWarnings:hasIFRAWarn||baseWarnings.length>0,
       packaging:selectedPkg.map(p=>({name:p.name,category:p.category,price_eur:p.price_eur,per_unit:p.per_unit,description:p.description})),
     };
-    save([...recipes,recipe]);
-    setSaved(true);
+    if(editId){
+      save(recipes.map(r=>r.id===editId?product:r));
+    } else {
+      save([...recipes,product]);
+    }
+    setSaved(true);setEditId(null);
     setTimeout(()=>setSaved(false),2500);
   };
   return <div>
@@ -603,7 +627,7 @@ function Builder({recipes,save,goRecipes}) {
     </div>
     <div style={card}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <span style={{fontWeight:600,fontSize:14}}>Base Ingredients</span>
+        <span style={{fontWeight:600,fontSize:14}}>Step 1 — Base Ingredients</span>
         <span style={{fontSize:11,color:totalBasePct>100?danger:totalBasePct>0?gold:textMuted}}>Base total: {totalBasePct.toFixed(1)}%</span>
       </div>
       <div style={{position:"relative",marginBottom:4}}>
@@ -646,7 +670,7 @@ function Builder({recipes,save,goRecipes}) {
     </div>
     <div style={card}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <span style={{fontWeight:600,fontSize:14}}>Scent Blend</span>
+        <span style={{fontWeight:600,fontSize:14}}>Step 2 — Scent Blend</span>
         <span style={{fontSize:11,color:hasIFRAWarn?danger:totalScentPct>0?gold:textMuted}}>Scent total: {totalScentPct.toFixed(3)}% ({totalScentMl.toFixed(3)} ml)</span>
       </div>
       <div style={{position:"relative",marginBottom:4}}>
@@ -703,10 +727,10 @@ function Builder({recipes,save,goRecipes}) {
         <div><span style={{color:textMuted}}>Total:</span> <strong style={{color:Math.abs(totalPct-100)<2?ok:warn}}>{totalPct.toFixed(2)}%</strong></div>
       </div>
     </div>}
-    {/* PACKAGING SELECTION */}
-    {(baseRows.length>0||compScents.length>0)&&<div style={card}>
+    {/* PACKAGING SELECTION — always visible */}
+    <div style={card}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <span style={{fontWeight:600,fontSize:14}}>Packaging</span>
+        <span style={{fontWeight:600,fontSize:14}}>Step 3 — Packaging</span>
         <span style={{fontSize:11,color:selectedPkg.length>0?gold:textMuted}}>€{selectedPkg.reduce((a,p)=>a+p.price_eur,0).toFixed(2)} per unit</span>
       </div>
       <div style={{position:"relative",marginBottom:4}}>
@@ -726,18 +750,19 @@ function Builder({recipes,save,goRecipes}) {
         </div>
       </div>)}
       {selectedPkg.length===0&&PACKAGING_ITEMS.length===0&&<div style={{fontSize:11,color:textMuted,padding:"8px 0"}}>No packaging items in Google Sheet yet. Add them in the Packaging tab.</div>}
-    </div>}
-    {(baseRows.length>0||compScents.length>0)&&<div style={{...card,display:"flex",flexWrap:"wrap",gap:10,alignItems:"end"}}>
+    </div>
+    {/* SAVE SECTION */}
+    <div style={{...card,display:"flex",flexWrap:"wrap",gap:10,alignItems:"end"}}>
       <div style={{flex:"1 1 200px"}}><label style={lbl}>Product Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Boegbeeld Signature Pomade v1" style={inp}/></div>
       <div style={{flex:"1 1 200px"}}><label style={lbl}>Notes (optional)</label><input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Internal notes..." style={inp}/></div>
       <button onClick={handleSave} disabled={!name.trim()||hasIFRAWarn} style={{...btn,background:hasIFRAWarn?textDim:gold,color:hasIFRAWarn?textMuted:bg,fontWeight:600,padding:"8px 24px",cursor:hasIFRAWarn||!name.trim()?"not-allowed":"pointer",opacity:!name.trim()?0.5:1}}>
-        {hasIFRAWarn?"Fix IFRA Warnings":"Save Product"}
+        {hasIFRAWarn?"Fix IFRA Warnings":editId?"Update Product":"Save Product"}
       </button>
       {saved&&<span style={{color:ok,fontSize:12}}>[x] Saved! View in Saved Products tab.</span>}
-    </div>}
+    </div>
   </div>;
 }
-function Recipes({recipes,save,goBuilder}) {
+function Recipes({recipes,save,goBuilder,onEdit}) {
   const [expanded,setExpanded]=useState(null);
   const [pifView,setPifView]=useState(null);
   const fileRef=useRef(null);
@@ -835,6 +860,7 @@ function Recipes({recipes,save,goBuilder}) {
             </div>
           </div>
           <div style={{display:"flex",gap:4}}>
+            <button onClick={e=>{e.stopPropagation();onEdit(r);}} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}30`,fontSize:10}}>✏️ Edit</button>
             <button onClick={e=>{e.stopPropagation();copyForSheet(r);}} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}30`,fontSize:10}}>📋 Copy for Sheet</button>
             <button onClick={e=>{e.stopPropagation();del(r.id);}} style={{...btn,background:bgInput,color:danger,border:`1px solid ${danger}30`,fontSize:10}}>Delete</button>
           </div>
