@@ -359,7 +359,7 @@ function Library() {
   const scentUrl=(name)=>{const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-$/,"");return `https://www.youwish.nl/en/?s=${encodeURIComponent(name)}&post_type=product`;};
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Scent Library <span style={{fontSize:11,color:textMuted,fontFamily:"'Open Sans'",letterSpacing:0,textTransform:"none"}}>({allScents.length} scents)</span></h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Click any row to expand IFRA details. Filter by category to see max %.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>All prices excl. BTW. Click any row to expand IFRA details.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12,alignItems:"center"}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search scent, profile, family..." style={{...inp,flex:"1 1 180px",minWidth:150}}/>
       <select value={tf} onChange={e=>setTf(e.target.value)} style={{...inp,width:130}}><option value="all">All Types</option><option value="EO">Essential Oil</option><option value="FO">Fragrance Oil</option><option value="CO2">CO₂ Extract</option></select>
@@ -449,7 +449,7 @@ function IngredientsLib() {
   const baseUrl=(name)=>`https://www.youwish.nl/en/?s=${encodeURIComponent(name)}&post_type=product`;
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Base Ingredients <span style={{fontSize:11,color:textMuted,fontFamily:"'Open Sans'",letterSpacing:0,textTransform:"none"}}>({allBases.length})</span></h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Base ingredients for your formulations. Click to expand details.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>All prices excl. BTW. Click to expand details.</p>
     <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search ingredient or INCI..." style={{...inp,flex:"1 1 200px"}}/>
       <select value={rf} onChange={e=>setRf(e.target.value)} style={{...inp,width:150}}><option value="all">All Roles</option>{roles.map(r=><option key={r} value={r}>{r}</option>)}</select>
@@ -474,7 +474,7 @@ function IngredientsLib() {
             </tr>
             {open&&<tr><td colSpan={6} style={{padding:"0 8px 8px",background:bgCard}}><div style={{padding:"10px 14px",borderRadius:8,background:bgInput,border:`1px solid ${border}`}}>
               <div style={{fontSize:11,color:textMain,marginBottom:6}}><strong style={{color:gold}}>Notes:</strong> {b.notes}</div>
-              <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Default %: {b.defaultPct}% · Max: {b.maxPct}% · €{(b.pricePer100||0).toFixed(2)}/{b.priceSize||100}ml · {b.youwish?"Supplier":"External"}</div>
+              <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Default %: {b.defaultPct}% · Max: {b.maxPct}% · €{(b.pricePer100||0).toFixed(2)}/{b.priceSize||100}ml excl. BTW · {b.youwish?"Supplier":"External"}</div>
               <div style={{fontSize:11,color:textMuted,marginBottom:6}}>Used in: {(b.products||[]).map(p=>PRODUCTS[p]?.name).filter(Boolean).join(", ")}</div>
               <a href={SHEETS_CONFIG.editBases} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...btn,fontSize:10,color:gold,background:"transparent",border:`1px solid ${gold}30`,padding:"2px 8px",marginBottom:6,textDecoration:"none"}}>📝 Edit in Sheet</a>
               <a href={b.url||baseUrl(b.name)} target="_blank" rel="noopener noreferrer" style={{color:gold,fontSize:11,textDecoration:"underline"}}>View at supplier →</a>
@@ -731,13 +731,13 @@ function Builder({recipes,save,goRecipes,editingProduct,clearEdit}) {
     <div style={card}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <span style={{fontWeight:600,fontSize:14}}>Step 3 — Packaging</span>
-        <span style={{fontSize:11,color:selectedPkg.length>0?gold:textMuted}}>€{selectedPkg.reduce((a,p)=>a+p.price_eur,0).toFixed(2)} per unit</span>
+        <span style={{fontSize:11,color:selectedPkg.length>0?gold:textMuted}}>€{selectedPkg.reduce((a,p)=>a+p.price_eur,0).toFixed(2)} per unit excl. BTW</span>
       </div>
       <div style={{position:"relative",marginBottom:4}}>
         <input value={pkgSearch||""} onChange={e=>setPkgSearch(e.target.value)} onFocus={()=>{if(pkgSearch===null)setPkgSearch("");}} placeholder="+ Search or click to add packaging items..." style={{...inp,width:"100%"}}/>
         {pkgSearch!==null&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
           {PACKAGING_ITEMS.filter(p=>!selectedPkg.find(s=>s.name===p.name)).filter(p=>!pkgSearch||p.name.toLowerCase().includes(pkgSearch.toLowerCase())||p.category.toLowerCase().includes(pkgSearch.toLowerCase())||p.description.toLowerCase().includes(pkgSearch.toLowerCase())).map(p=><div key={p.name} onClick={()=>{setSelectedPkg([...selectedPkg,p]);setPkgSearch(null);}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-            <span style={{fontWeight:600}}>{p.name}</span> <span style={{color:textMuted,fontSize:10}}>({p.category}) — €{p.price_eur.toFixed(2)}/{p.per_unit}</span>
+            <span style={{fontWeight:600}}>{p.name}</span> <span style={{color:textMuted,fontSize:10}}>({p.category}) — €{p.price_eur.toFixed(2)}/{p.per_unit} excl. BTW</span>
           </div>)}
           {PACKAGING_ITEMS.filter(p=>!selectedPkg.find(s=>s.name===p.name)).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No more items. Add packaging in Google Sheet.</div>}
         </div>}
@@ -1301,8 +1301,8 @@ function CostCalc({recipes}) {
       </div>
       {/* -- INGREDIENT BREAKDOWN (with editable prices) -- */}
       <div style={{...card,marginTop:12}}>
-        <div style={sectionTitle}>Section 1 — Ingredients</div>
-        <p style={{fontSize:10,color:textMuted,margin:"0 0 8px"}}>Prices loaded from Google Sheet. <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" style={{color:gold}}>Edit prices in Sheet</a></p>
+        <div style={sectionTitle}>Section 1 — Ingredients (excl. BTW)</div>
+        <p style={{fontSize:10,color:textMuted,margin:"0 0 8px"}}>Prices from Google Sheet (excl. 21% BTW). <a href={SHEETS_CONFIG.editScents} target="_blank" rel="noopener noreferrer" style={{color:gold}}>Edit prices in Sheet</a></p>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead><tr style={{borderBottom:`1px solid ${border}`}}>
             {["Ingredient","%",`Per ${cSz}${containerUnit}`,"€/100","Cost/unit"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
@@ -1324,7 +1324,7 @@ function CostCalc({recipes}) {
       </div>
       {/* SECTION 2: PACKAGING */}
       <div style={{...card,marginTop:12}}>
-        <div style={sectionTitle}>Section 2 — Packaging</div>
+        <div style={sectionTitle}>Section 2 — Packaging (excl. BTW)</div>
         {packagingForProduct.length===0?
           <p style={{fontSize:11,color:textMuted}}>No packaging items found. Add a "packaging" tab in your Google Sheet with columns: name, description, category, price_eur, per_unit, for_product, url, notes</p>
         :<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -1404,7 +1404,7 @@ function Packaging() {
   });
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Packaging</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Packaging items loaded from your Google Sheet.</p>
+    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>All prices excl. BTW. Loaded from Google Sheet.</p>
     <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search packaging..." style={{...inp,flex:"1 1 180px"}}/>
       <select value={cf} onChange={e=>setCf(e.target.value)} style={{...inp,width:160}}><option value="all">All Categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select>
