@@ -294,7 +294,7 @@ function App() {
     setRecipes(r);
     try{await store.set("bb-recipes",JSON.stringify(r));}catch(e){console.error(e);}
   },[]);
-  const tabs = [{id:"library",icon:"🧴",label:"Scents"},{id:"ingredients",icon:"🧪",label:"Base"},{id:"packaging",icon:"📦",label:"Packaging"},{id:"builder",icon:"⚗️",label:"Recipe Builder"},{id:"recipes",icon:"📋",label:"Recipes"},{id:"production",icon:"🏭",label:"Production"},{id:"costs",icon:"💰",label:"Costs / Profit"}];
+  const tabs = [{id:"library",icon:"🧴",label:"Scents"},{id:"ingredients",icon:"🧪",label:"Base"},{id:"packaging",icon:"📦",label:"Packaging"},{id:"builder",icon:"⚗️",label:"Product Builder"},{id:"recipes",icon:"📋",label:"Products"},{id:"production",icon:"🏭",label:"Production"},{id:"costs",icon:"💰",label:"Costs / Profit"}];
   return (
     <div style={{fontFamily:"'Open Sans',sans-serif",background:bg,color:textMain,minHeight:"100vh"}}>
       <link href="https://fonts.googleapis.com/css2?family=Odibee+Sans&family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -495,8 +495,10 @@ function Builder({recipes,save,goRecipes}) {
   const [notes,setNotes]=useState("");
   const [saved,setSaved]=useState(false);
   const [showPifInfo,setShowPifInfo]=useState(false);
-  const [baseSearch,setBaseSearch]=useState("");
-  const [scentSearch,setScentSearch]=useState("");
+  const [baseSearch,setBaseSearch]=useState(null);
+  const [scentSearch,setScentSearch]=useState(null);
+  const [pkgSearch,setPkgSearch]=useState(null);
+  const [selectedPkg,setSelectedPkg]=useState([]);
   const preset=PRODUCTS[pt];
   const cat=preset.cat;
   const batchSize=parseFloat(cb)||preset.test;
@@ -575,13 +577,14 @@ function Builder({recipes,save,goRecipes}) {
       totalBasePct:+totalBasePct.toFixed(2), totalScentPct:+totalScentPct.toFixed(3), totalPct:+totalPct.toFixed(2),
       totalScentMl:+totalScentMl.toFixed(3),
       createdAt:new Date().toISOString(), hasWarnings:hasIFRAWarn||baseWarnings.length>0,
+      packaging:selectedPkg.map(p=>({name:p.name,category:p.category,price_eur:p.price_eur,per_unit:p.per_unit,description:p.description})),
     };
     save([...recipes,recipe]);
     setSaved(true);
     setTimeout(()=>setSaved(false),2500);
   };
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Recipe Builder</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Product Builder</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Build full formulations. System enforces IFRA limits and flags formulation issues.</p>
     <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
       <div style={{flex:"1 1 180px"}}><label style={lbl}>Product Type</label>
@@ -604,9 +607,9 @@ function Builder({recipes,save,goRecipes}) {
         <span style={{fontSize:11,color:totalBasePct>100?danger:totalBasePct>0?gold:textMuted}}>Base total: {totalBasePct.toFixed(1)}%</span>
       </div>
       <div style={{position:"relative",marginBottom:4}}>
-        <input value={baseSearch||""} onChange={e=>setBaseSearch(e.target.value)} onFocus={()=>setBaseSearch(baseSearch||"")} placeholder="+ Search and add base ingredient..." style={{...inp,width:"100%"}}/>
-        {baseSearch!==null&&baseSearch!==""&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
-          {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>b.name.toLowerCase().includes((baseSearch||"").toLowerCase())||b.role.toLowerCase().includes((baseSearch||"").toLowerCase())||b.inci.toLowerCase().includes((baseSearch||"").toLowerCase())).map(b=><div key={b.name} onClick={()=>{addBase(b.name);setBaseSearch("");}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        <input value={baseSearch||""} onChange={e=>setBaseSearch(e.target.value)} onFocus={()=>setBaseSearch(baseSearch||"")} placeholder="+ Search or click to browse ingredients..." style={{...inp,width:"100%"}}/>
+        {baseSearch!==null&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
+          {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>b.name.toLowerCase().includes((baseSearch||"").toLowerCase())||b.role.toLowerCase().includes((baseSearch||"").toLowerCase())||b.inci.toLowerCase().includes((baseSearch||"").toLowerCase())).map(b=><div key={b.name} onClick={()=>{addBase(b.name);setBaseSearch(null);}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <span style={{fontWeight:600}}>{b.name}</span> <span style={{color:textMuted,fontSize:10}}>({b.role}) — max {b.maxPct}%</span>
           </div>)}
           {availBases.filter(b=>!baseRows.find(r=>r.name===b.name)).filter(b=>b.name.toLowerCase().includes((baseSearch||"").toLowerCase())||b.role.toLowerCase().includes((baseSearch||"").toLowerCase())).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No matches found</div>}
@@ -647,11 +650,11 @@ function Builder({recipes,save,goRecipes}) {
         <span style={{fontSize:11,color:hasIFRAWarn?danger:totalScentPct>0?gold:textMuted}}>Scent total: {totalScentPct.toFixed(3)}% ({totalScentMl.toFixed(3)} ml)</span>
       </div>
       <div style={{position:"relative",marginBottom:4}}>
-        <input value={scentSearch||""} onChange={e=>setScentSearch(e.target.value)} onFocus={()=>setScentSearch(scentSearch||"")} placeholder="+ Search and add scent..." style={{...inp,width:"100%"}}/>
-        {scentSearch!==null&&scentSearch!==""&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
+        <input value={scentSearch||""} onChange={e=>setScentSearch(e.target.value)} onFocus={()=>setScentSearch(scentSearch||"")} placeholder="+ Search or click to browse scents..." style={{...inp,width:"100%"}}/>
+        {scentSearch!==null&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
           {SCENTS.filter(s=>!scentRows.find(r=>r.name===s.name)).filter(s=>s.name.toLowerCase().includes((scentSearch||"").toLowerCase())||s.family.toLowerCase().includes((scentSearch||"").toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{
             const mx=s.ifra[cat]||0;
-            return <div key={s.name} onClick={()=>{addScent(s.name);setScentSearch("");}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`,color:mx===0?danger:textMain}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            return <div key={s.name} onClick={()=>{addScent(s.name);setScentSearch(null);}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`,color:mx===0?danger:textMain}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <span style={{fontWeight:600}}>{s.name}</span> <TypeBadge t={s.type}/> <span style={{color:textMuted,fontSize:10}}>— max {mx===0?"⛔ BANNED":mx+"% Cat "+cat}</span>
             </div>;
           })}
@@ -700,13 +703,37 @@ function Builder({recipes,save,goRecipes}) {
         <div><span style={{color:textMuted}}>Total:</span> <strong style={{color:Math.abs(totalPct-100)<2?ok:warn}}>{totalPct.toFixed(2)}%</strong></div>
       </div>
     </div>}
+    {/* PACKAGING SELECTION */}
+    {(baseRows.length>0||compScents.length>0)&&<div style={card}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <span style={{fontWeight:600,fontSize:14}}>Packaging</span>
+        <span style={{fontSize:11,color:selectedPkg.length>0?gold:textMuted}}>€{selectedPkg.reduce((a,p)=>a+p.price_eur,0).toFixed(2)} per unit</span>
+      </div>
+      <div style={{position:"relative",marginBottom:4}}>
+        <input value={pkgSearch||""} onChange={e=>setPkgSearch(e.target.value)} onFocus={()=>{if(pkgSearch===null)setPkgSearch("");}} placeholder="+ Search or click to add packaging items..." style={{...inp,width:"100%"}}/>
+        {pkgSearch!==null&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:bgCard,border:`1px solid ${border}`,borderRadius:6,maxHeight:200,overflowY:"auto",marginTop:2}}>
+          {PACKAGING_ITEMS.filter(p=>!selectedPkg.find(s=>s.name===p.name)).filter(p=>!pkgSearch||p.name.toLowerCase().includes(pkgSearch.toLowerCase())||p.category.toLowerCase().includes(pkgSearch.toLowerCase())||p.description.toLowerCase().includes(pkgSearch.toLowerCase())).map(p=><div key={p.name} onClick={()=>{setSelectedPkg([...selectedPkg,p]);setPkgSearch(null);}} style={{padding:"6px 10px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${border}20`}} onMouseEnter={e=>e.currentTarget.style.background=`${gold}15`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <span style={{fontWeight:600}}>{p.name}</span> <span style={{color:textMuted,fontSize:10}}>({p.category}) — €{p.price_eur.toFixed(2)}/{p.per_unit}</span>
+          </div>)}
+          {PACKAGING_ITEMS.filter(p=>!selectedPkg.find(s=>s.name===p.name)).length===0&&<div style={{padding:"8px 10px",color:textMuted,fontSize:11}}>No more items. Add packaging in Google Sheet.</div>}
+        </div>}
+      </div>
+      {selectedPkg.map((p,i)=><div key={p.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderTop:i>0?`1px solid ${border}20`:"none"}}>
+        <div><span style={{fontWeight:600,fontSize:12}}>{p.name}</span> <span style={{fontSize:10,color:textMuted}}>({p.category})</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{color:gold,fontSize:12,fontWeight:600}}>€{p.price_eur.toFixed(2)}</span>
+          <button onClick={()=>setSelectedPkg(selectedPkg.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:danger,cursor:"pointer",fontSize:14}}>×</button>
+        </div>
+      </div>)}
+      {selectedPkg.length===0&&PACKAGING_ITEMS.length===0&&<div style={{fontSize:11,color:textMuted,padding:"8px 0"}}>No packaging items in Google Sheet yet. Add them in the Packaging tab.</div>}
+    </div>}
     {(baseRows.length>0||compScents.length>0)&&<div style={{...card,display:"flex",flexWrap:"wrap",gap:10,alignItems:"end"}}>
-      <div style={{flex:"1 1 200px"}}><label style={lbl}>Recipe Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Boegbeeld Signature Pomade v1" style={inp}/></div>
+      <div style={{flex:"1 1 200px"}}><label style={lbl}>Product Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Boegbeeld Signature Pomade v1" style={inp}/></div>
       <div style={{flex:"1 1 200px"}}><label style={lbl}>Notes (optional)</label><input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Internal notes..." style={inp}/></div>
       <button onClick={handleSave} disabled={!name.trim()||hasIFRAWarn} style={{...btn,background:hasIFRAWarn?textDim:gold,color:hasIFRAWarn?textMuted:bg,fontWeight:600,padding:"8px 24px",cursor:hasIFRAWarn||!name.trim()?"not-allowed":"pointer",opacity:!name.trim()?0.5:1}}>
-        {hasIFRAWarn?"Fix IFRA Warnings":"Save Recipe"}
+        {hasIFRAWarn?"Fix IFRA Warnings":"Save Product"}
       </button>
-      {saved&&<span style={{color:ok,fontSize:12}}>[x] Saved! View in Saved Recipes tab.</span>}
+      {saved&&<span style={{color:ok,fontSize:12}}>[x] Saved! View in Saved Products tab.</span>}
     </div>}
   </div>;
 }
@@ -716,28 +743,55 @@ function Recipes({recipes,save,goBuilder}) {
   const fileRef=useRef(null);
   const del=(id)=>save(recipes.filter(r=>r.id!==id));
   const exportAll=()=>{
+    const rows=[];
+    rows.push(["name","product_type","category","batch_size","batch_unit","total_base_pct","total_scent_pct","total_pct","created","notes","ingredients_json","scents_json","packaging_json"].join(","));
+    recipes.forEach(r=>{
+      rows.push([
+        `"${r.name}"`,r.productType,r.category,r.batchSize,r.batchUnit,
+        r.totalBasePct,r.totalScentPct,r.totalPct,
+        `"${new Date(r.createdAt).toLocaleDateString("nl-NL")}"`,
+        `"${(r.notes||"").replace(/"/g,'""')}"`,
+        `"${JSON.stringify(r.bases||[]).replace(/"/g,'""')}"`,
+        `"${JSON.stringify(r.scents||[]).replace(/"/g,'""')}"`,
+        `"${JSON.stringify(r.packaging||[]).replace(/"/g,'""')}"`,
+      ].join(","));
+    });
+    const blob=new Blob([rows.join("\n")],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download=`boegbeeld-products-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
+  };
+  const exportJSON=()=>{
     const blob=new Blob([JSON.stringify(recipes,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
-    a.href=url;a.download=`boegbeeld-recipes-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
+    a.href=url;a.download=`boegbeeld-products-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
   };
   const importFile=(e)=>{
     const file=e.target.files?.[0];if(!file)return;
     const reader=new FileReader();
     reader.onload=(ev)=>{
       try{
-        const imported=JSON.parse(ev.target.result);
+        const text=ev.target.result;
+        let imported;
+        if(file.name.endsWith('.json')){
+          imported=JSON.parse(text);
+        } else {
+          // Try JSON parse first (in case CSV contains full recipe JSON)
+          try{imported=JSON.parse(text);}catch(e){
+            alert("For importing, please use the JSON backup file. CSV export is for viewing in Google Sheets.");return;
+          }
+        }
         if(Array.isArray(imported)){
           const merged=[...recipes];
           imported.forEach(r=>{if(!merged.find(x=>x.id===r.id))merged.push({...r,id:r.id||Date.now()+Math.random()});});
-          save(merged);alert(`Imported ${imported.length} recipe(s). ${merged.length} total.`);
+          save(merged);alert(`Imported ${imported.length} product(s). ${merged.length} total.`);
         }
-      }catch(err){alert("Invalid file. Please select a valid recipes JSON file.");}
+      }catch(err){alert("Invalid file format.");}
     };
     reader.readAsText(file);e.target.value="";
   };
   const copyForSheet=(r)=>{
     const rows=[];
-    rows.push(["Recipe: "+r.name,"Product: "+r.productName,"Cat: "+r.category,"Batch: "+r.batchSize+r.batchUnit,"Created: "+new Date(r.createdAt).toLocaleDateString("nl-NL")].join("\t"));
+    rows.push(["Product: "+r.name,"Product: "+r.productName,"Cat: "+r.category,"Batch: "+r.batchSize+r.batchUnit,"Created: "+new Date(r.createdAt).toLocaleDateString("nl-NL")].join("\t"));
     rows.push("");
     rows.push(["BASE INGREDIENTS","INCI","Role","%",r.batchUnit||"g"].join("\t"));
     (r.bases||[]).forEach(b=>rows.push([b.name,b.inci,b.role,b.pct+"%",((b.pct/100)*r.batchSize).toFixed(2)].join("\t")));
@@ -748,22 +802,23 @@ function Recipes({recipes,save,goBuilder}) {
     rows.push(["TOTAL",""," "," ",r.totalPct+"%"].join("\t"));
     rows.push("");
     rows.push(["INCI LIST",...(r.bases||[]).sort((a,b)=>b.pct-a.pct).map(b=>b.inci),"Parfum"].join(", "));
-    navigator.clipboard.writeText(rows.join("\n")).then(()=>alert("Recipe copied! Paste into Google Sheets."));
+    navigator.clipboard.writeText(rows.join("\n")).then(()=>alert("Product copied! Paste into Google Sheets."));
   };
   if(recipes.length===0)return <div style={{textAlign:"center",padding:"50px 20px"}}>
     <div style={{fontSize:44,marginBottom:12}}>📋</div>
-    <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Saved Recipes</h3>
-    <p style={{color:textMuted,fontSize:13}}>Build your first formulation in the Recipe Builder.</p>
-    <button onClick={goBuilder} style={{...btn,background:gold,color:bg,fontWeight:600,padding:"10px 24px",marginTop:10}}>Open Recipe Builder</button>
-    <div style={{marginTop:10}}><button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📤 Import Recipes from JSON</button><input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/></div>
+    <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Saved Products</h3>
+    <p style={{color:textMuted,fontSize:13}}>Build your first formulation in the Product Builder.</p>
+    <button onClick={goBuilder} style={{...btn,background:gold,color:bg,fontWeight:600,padding:"10px 24px",marginTop:10}}>Open Product Builder</button>
+    <div style={{marginTop:10}}><button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📤 Import Products from JSON</button><input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/></div>
   </div>;
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Saved Recipes</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Saved Products</h2>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:12}}>
       <p style={{color:textMuted,fontSize:12,margin:0}}>Click a recipe to view summary and download product specification.</p>
       <div style={{display:"flex",gap:6}}>
-        <button onClick={exportAll} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export All (JSON)</button>
-        <button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📤 Import Recipes</button>
+        <button onClick={exportAll} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export CSV (for Sheets)</button>
+        <button onClick={exportJSON} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export JSON (backup)</button>
+        <button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📤 Import (JSON)</button>
         <input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/>
       </div>
     </div>
@@ -967,16 +1022,16 @@ function Production({recipes}) {
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a saved recipe and scale it to any production quantity.</p>
     {recipes.length===0&&<div style={{textAlign:"center",padding:"50px 20px"}}>
       <div style={{fontSize:44,marginBottom:12}}>🏭</div>
-      <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Recipes to Produce</h3>
-      <p style={{color:textMuted,fontSize:13}}>Create and save a recipe in the Recipe Builder first.</p>
+      <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Products to Produce</h3>
+      <p style={{color:textMuted,fontSize:13}}>Create and save a recipe in the Product Builder first.</p>
     </div>}
     {recipes.length>0&&<>
       {/* Recipe Selection */}
       <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
         <div style={{flex:"1 1 250px"}}>
-          <label style={lbl}>Select Recipe</label>
+          <label style={lbl}>Select Product</label>
           <select value={selId} onChange={e=>setSelId(e.target.value)} style={inp}>
-            <option value="">Choose a recipe...</option>
+            <option value="">Choose a product...</option>
             {recipes.map(r=><option key={r.id} value={r.id}>{r.name} ({r.productName} · {r.batchSize}{r.batchUnit} original)</option>)}
           </select>
         </div>
@@ -1027,7 +1082,7 @@ function Production({recipes}) {
           <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:8}}>Base Ingredients</div>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
             <thead><tr style={{borderBottom:`1px solid ${border}`}}>
-              {["Ingredient","INCI","Recipe %","Amount",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+              {["Ingredient","INCI","Product %","Amount",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
             </tr></thead>
             <tbody>{recipe.bases.map((b,i)=>{
               const scaled=(b.pct/100)*targetInOrigUnit;
@@ -1050,7 +1105,7 @@ function Production({recipes}) {
           <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:15,marginBottom:8}}>Scent Blend</div>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
             <thead><tr style={{borderBottom:`1px solid ${border}`}}>
-              {["Scent","Type","Recipe %","Amount (ml)","Drops (≈)",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
+              {["Scent","Type","Product %","Amount (ml)","Drops (≈)",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:textDim,fontWeight:600,fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{h}</th>)}
             </tr></thead>
             <tbody>{recipe.scents.map((s,i)=>{
               const scaledMl=(s.pct/100)*targetInOrigUnit;
@@ -1158,9 +1213,9 @@ function CostCalc({recipes}) {
     return {...ing,pricePerUnit,amtPerContainer,costPerContainer};
   });
   const totalCostPerContainer=ingredientCosts.reduce((a,i)=>a+i.costPerContainer,0);
-  // Packaging costs from Google Sheet
-  const packagingForProduct=PACKAGING_ITEMS.filter(p=>p.for_product==="all"||p.for_product.toLowerCase()===(recipe?.productType||"").toLowerCase()||p.for_product.toLowerCase()===(recipe?.productName||"").toLowerCase());
-  const totalPackagingCost=packagingForProduct.reduce((a,p)=>a+p.price_eur,0);
+  // Packaging costs from saved recipe
+  const packagingForProduct=recipe?.packaging||[];
+  const totalPackagingCost=packagingForProduct.reduce((a,p)=>a+(p.price_eur||0),0);
   const totalCostPerUnit=totalCostPerContainer+totalPackagingCost;
   const margin=rp>0&&totalCostPerUnit>0?((rp-totalCostPerUnit)/rp*100):0;
   const sectionTitle={fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:14,marginBottom:4,letterSpacing:1,textTransform:"uppercase"};
@@ -1169,9 +1224,9 @@ function CostCalc({recipes}) {
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a recipe to see total cost per unit. Adjust ingredient prices below the summary.</p>
     {/* Recipe Selection */}
     <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
-      <div style={{flex:"1 1 250px"}}><label style={lbl}>Select Recipe</label>
+      <div style={{flex:"1 1 250px"}}><label style={lbl}>Select Product</label>
         <select value={selId} onChange={e=>setSelId(e.target.value)} style={inp}>
-          <option value="">Choose a recipe...</option>
+          <option value="">Choose a product...</option>
           {recipes.map(r=><option key={r.id} value={r.id}>{r.name} ({r.productName})</option>)}
         </select>
       </div>
@@ -1270,6 +1325,38 @@ function CostCalc({recipes}) {
           <div style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:32}}>€{totalCostPerUnit.toFixed(2)}</div>
         </div>
       </div>
+      {/* EXPORT */}
+      <div style={{marginTop:12,display:"flex",gap:6}}>
+        <button onClick={()=>{
+          const rows=[];
+          rows.push(["Boegbeeld Costs / Profit Report",recipe.name,new Date().toLocaleDateString("nl-NL")].join(","));
+          rows.push("");
+          rows.push(["SECTION 1: INGREDIENTS","","","",""].join(","));
+          rows.push(["Ingredient","%","Amount","€/100","Cost/unit"].join(","));
+          ingredientCosts.forEach(ing=>rows.push([`"${ing.name}"`,ing.pct+"%",ing.amtPerContainer.toFixed(2),"€"+ing.pricePerUnit.toFixed(2),"€"+ing.costPerContainer.toFixed(3)].join(",")));
+          rows.push(["","","","Subtotal:","€"+totalCostPerContainer.toFixed(2)].join(","));
+          rows.push("");
+          rows.push(["SECTION 2: PACKAGING","","","",""].join(","));
+          rows.push(["Item","Category","","","Cost/unit"].join(","));
+          packagingForProduct.forEach(p=>rows.push([`"${p.name}"`,p.category,"","","€"+(p.price_eur||0).toFixed(2)].join(",")));
+          rows.push(["","","","Subtotal:","€"+totalPackagingCost.toFixed(2)].join(","));
+          rows.push("");
+          rows.push(["TOTAL COST PER UNIT","","","","€"+totalCostPerUnit.toFixed(2)].join(","));
+          if(rp>0){rows.push(["Retail Price","","","","€"+rp.toFixed(2)].join(","));rows.push(["Margin","","","",margin.toFixed(1)+"%"].join(","));rows.push(["Profit per Unit","","","","€"+(rp-totalCostPerUnit).toFixed(2)].join(","));}
+          const blob=new Blob([rows.join("\n")],{type:"text/csv"});
+          const url=URL.createObjectURL(blob);const a=document.createElement("a");
+          a.href=url;a.download=`boegbeeld-costs-${recipe.name.replace(/\s+/g,"-")}-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
+        }} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📥 Export Cost Report (CSV)</button>
+        <button onClick={()=>{
+          const rows=[];
+          rows.push(["Item","Amount","Cost"].join("\t"));
+          ingredientCosts.forEach(ing=>rows.push([ing.name,ing.amtPerContainer.toFixed(2)+"ml","€"+ing.costPerContainer.toFixed(3)].join("\t")));
+          rows.push(["---","---","---"].join("\t"));
+          packagingForProduct.forEach(p=>rows.push([p.name,p.category,"€"+(p.price_eur||0).toFixed(2)].join("\t")));
+          rows.push(["","TOTAL","€"+totalCostPerUnit.toFixed(2)].join("\t"));
+          navigator.clipboard.writeText(rows.join("\n")).then(()=>alert("Cost report copied! Paste into Google Sheets."));
+        }} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📋 Copy for Sheet</button>
+      </div>
     </>}
     {!recipe&&recipes.length>0&&<div style={{...card,marginTop:12,background:bgInput,border:`1px solid ${gold}20`}}>
       <div style={{fontSize:12,color:textMuted}}>💡 Select a recipe above to see cost breakdown. Prices loaded from Google Sheet (FO: €29.50/100ml, EO: €25/100ml, Carrier oils: €8/100ml). Edit directly in the table or in the Scents/Base tabs.</div>
@@ -1280,11 +1367,17 @@ function Packaging() {
   const items = PACKAGING_ITEMS;
   const categories = [...new Set(items.map(i=>i.category))].sort();
   const [cf,setCf]=useState("all");
-  const filtered = cf==="all"?items:items.filter(i=>i.category===cf);
+  const [q,setQ]=useState("");
+  const filtered = items.filter(i=>{
+    if(cf!=="all"&&i.category!==cf)return false;
+    if(q&&!i.name.toLowerCase().includes(q.toLowerCase())&&!i.description.toLowerCase().includes(q.toLowerCase())&&!i.for_product.toLowerCase().includes(q.toLowerCase()))return false;
+    return true;
+  });
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Packaging</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Packaging items loaded from your Google Sheet.</p>
     <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search packaging..." style={{...inp,flex:"1 1 180px"}}/>
       <select value={cf} onChange={e=>setCf(e.target.value)} style={{...inp,width:160}}><option value="all">All Categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select>
       <a href={SHEETS_CONFIG.editPackaging} target="_blank" rel="noopener noreferrer" style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11,textDecoration:"none"}}>+ Add in Google Sheet</a>
     </div>
