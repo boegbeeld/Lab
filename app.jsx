@@ -294,7 +294,7 @@ function App() {
     setRecipes(r);
     try{await store.set("bb-recipes",JSON.stringify(r));}catch(e){console.error(e);}
   },[]);
-  const tabs = [{id:"library",icon:"🧴",label:"Scents"},{id:"ingredients",icon:"🧪",label:"Base"},{id:"builder",icon:"⚗️",label:"Recipe Builder"},{id:"recipes",icon:"📋",label:"Recipes"},{id:"production",icon:"🏭",label:"Production"},{id:"packaging",icon:"📦",label:"Packaging"},{id:"costs",icon:"💰",label:"Costs"}];
+  const tabs = [{id:"library",icon:"🧴",label:"Scents"},{id:"ingredients",icon:"🧪",label:"Base"},{id:"packaging",icon:"📦",label:"Packaging"},{id:"builder",icon:"⚗️",label:"Recipe Builder"},{id:"recipes",icon:"📋",label:"Recipes"},{id:"production",icon:"🏭",label:"Production"},{id:"costs",icon:"💰",label:"Costs / Profit"}];
   return (
     <div style={{fontFamily:"'Open Sans',sans-serif",background:bg,color:textMain,minHeight:"100vh"}}>
       <link href="https://fonts.googleapis.com/css2?family=Odibee+Sans&family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -318,10 +318,10 @@ function App() {
       <div style={{maxWidth:1200,margin:"0 auto",padding:"12px 16px 40px"}}>
         {tab==="library"&&<Library/>}
         {tab==="ingredients"&&<IngredientsLib/>}
+        {tab==="packaging"&&<Packaging/>}
         {tab==="builder"&&<Builder recipes={recipes} save={save} goRecipes={()=>setTab("recipes")}/>}
         {tab==="recipes"&&<Recipes recipes={recipes} save={save} goBuilder={()=>setTab("builder")}/>}
         {tab==="production"&&<Production recipes={recipes}/>}
-        {tab==="packaging"&&<Packaging/>}
         {tab==="costs"&&<CostCalc recipes={recipes}/>}
       </div>
     </div>
@@ -713,16 +713,60 @@ function Builder({recipes,save,goRecipes}) {
 function Recipes({recipes,save,goBuilder}) {
   const [expanded,setExpanded]=useState(null);
   const [pifView,setPifView]=useState(null);
+  const fileRef=useRef(null);
   const del=(id)=>save(recipes.filter(r=>r.id!==id));
+  const exportAll=()=>{
+    const blob=new Blob([JSON.stringify(recipes,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download=`boegbeeld-recipes-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
+  };
+  const importFile=(e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try{
+        const imported=JSON.parse(ev.target.result);
+        if(Array.isArray(imported)){
+          const merged=[...recipes];
+          imported.forEach(r=>{if(!merged.find(x=>x.id===r.id))merged.push({...r,id:r.id||Date.now()+Math.random()});});
+          save(merged);alert(`Imported ${imported.length} recipe(s). ${merged.length} total.`);
+        }
+      }catch(err){alert("Invalid file. Please select a valid recipes JSON file.");}
+    };
+    reader.readAsText(file);e.target.value="";
+  };
+  const copyForSheet=(r)=>{
+    const rows=[];
+    rows.push(["Recipe: "+r.name,"Product: "+r.productName,"Cat: "+r.category,"Batch: "+r.batchSize+r.batchUnit,"Created: "+new Date(r.createdAt).toLocaleDateString("nl-NL")].join("\t"));
+    rows.push("");
+    rows.push(["BASE INGREDIENTS","INCI","Role","%",r.batchUnit||"g"].join("\t"));
+    (r.bases||[]).forEach(b=>rows.push([b.name,b.inci,b.role,b.pct+"%",((b.pct/100)*r.batchSize).toFixed(2)].join("\t")));
+    rows.push("");
+    rows.push(["SCENT BLEND","Type","Drops","ml","%"].join("\t"));
+    (r.scents||[]).forEach(s=>rows.push([s.name,s.type,s.drops,(s.ml||0).toFixed(3),(s.pct||0).toFixed(3)+"%"].join("\t")));
+    rows.push("");
+    rows.push(["TOTAL",""," "," ",r.totalPct+"%"].join("\t"));
+    rows.push("");
+    rows.push(["INCI LIST",...(r.bases||[]).sort((a,b)=>b.pct-a.pct).map(b=>b.inci),"Parfum"].join(", "));
+    navigator.clipboard.writeText(rows.join("\n")).then(()=>alert("Recipe copied! Paste into Google Sheets."));
+  };
   if(recipes.length===0)return <div style={{textAlign:"center",padding:"50px 20px"}}>
     <div style={{fontSize:44,marginBottom:12}}>📋</div>
     <h3 style={{fontFamily:"'Open Sans',sans-serif",color:gold,fontWeight:700}}>No Saved Recipes</h3>
     <p style={{color:textMuted,fontSize:13}}>Build your first formulation in the Recipe Builder.</p>
     <button onClick={goBuilder} style={{...btn,background:gold,color:bg,fontWeight:600,padding:"10px 24px",marginTop:10}}>Open Recipe Builder</button>
+    <div style={{marginTop:10}}><button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:11}}>📤 Import Recipes from JSON</button><input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/></div>
   </div>;
   return <div>
     <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Saved Recipes</h2>
-    <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Click a recipe to view summary and download product specification.</p>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:12}}>
+      <p style={{color:textMuted,fontSize:12,margin:0}}>Click a recipe to view summary and download product specification.</p>
+      <div style={{display:"flex",gap:6}}>
+        <button onClick={exportAll} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📥 Export All (JSON)</button>
+        <button onClick={()=>fileRef.current?.click()} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}40`,fontSize:10}}>📤 Import Recipes</button>
+        <input ref={fileRef} type="file" accept=".json" onChange={importFile} style={{display:"none"}}/>
+      </div>
+    </div>
     {recipes.map(r=>{
       const isOpen=expanded===r.id;
       const isPif=pifView===r.id;
@@ -736,6 +780,7 @@ function Recipes({recipes,save,goBuilder}) {
             </div>
           </div>
           <div style={{display:"flex",gap:4}}>
+            <button onClick={e=>{e.stopPropagation();copyForSheet(r);}} style={{...btn,background:bgInput,color:gold,border:`1px solid ${gold}30`,fontSize:10}}>📋 Copy for Sheet</button>
             <button onClick={e=>{e.stopPropagation();del(r.id);}} style={{...btn,background:bgInput,color:danger,border:`1px solid ${danger}30`,fontSize:10}}>Delete</button>
           </div>
         </div>
@@ -1120,7 +1165,7 @@ function CostCalc({recipes}) {
   const margin=rp>0&&totalCostPerUnit>0?((rp-totalCostPerUnit)/rp*100):0;
   const sectionTitle={fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:14,marginBottom:4,letterSpacing:1,textTransform:"uppercase"};
   return <div>
-    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Cost Calculator</h2>
+    <h2 style={{fontFamily:"'Odibee Sans',cursive",color:gold,fontSize:20,margin:"0 0 4px",letterSpacing:3,textTransform:"uppercase"}}>Costs / Profit Calculator</h2>
     <p style={{color:textMuted,fontSize:12,margin:"0 0 12px"}}>Select a recipe to see total cost per unit. Adjust ingredient prices below the summary.</p>
     {/* Recipe Selection */}
     <div style={{...card,display:"flex",flexWrap:"wrap",gap:12,alignItems:"end"}}>
